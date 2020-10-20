@@ -14,10 +14,10 @@ jobs:
     docker:
     - image: circleci/golang:1.14
     - image: mongo
-    - image: localstack/localstack:0.10.5 # <-- this is spun up for us by Circle
-        environment:
-          DEBUG: 1
-          SERVICES: sqs,sns
+    - image: localstack/localstack:0.10.5
+      environment:
+        DEBUG: 1
+        SERVICES: sqs,sns
     steps:
       - checkout
       - run:
