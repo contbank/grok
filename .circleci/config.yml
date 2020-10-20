@@ -47,11 +47,11 @@ workflows:
   version: 2
   build-deploy:
     jobs:
-      # - run-tests
+      - run-tests
 
       - release-vesion:
-          # requires:
-          #   - run-tests
+          requires:
+            - run-tests
           filters:
             branches:
               only:
