@@ -1,0 +1,58 @@
+    
+version: 2.1
+
+defaults: &defaults
+  working_directory: /go/src/github.com/contbank/grok
+commands:
+  autotag:
+    steps:
+      - run: |
+          make install-autotag
+jobs:
+  run-tests:
+    <<: *defaults
+    docker:
+    - image: circleci/golang:1.14
+    - image: mongo
+    - image: localstack/localstack:0.10.5 # <-- this is spun up for us by Circle
+        environment:
+          DEBUG: 1
+          SERVICES: sqs,sns
+    steps:
+      - checkout
+      - run:
+          name: Run Rebase
+          command: make run-rebase
+      - run:
+          name: Build Package
+          command: make build-package
+      - run:
+          name: Run Tests
+          command: make run-tests
+  release-vesion:
+    <<: *defaults
+    docker:
+    - image: circleci/golang:1.14
+    steps:
+      - add_ssh_keys:
+          fingerprints:
+            - 9a:b3:df:33:d0:b0:d7:55:c9:7d:e3:55:58:e4:88:13
+      - checkout
+      - autotag
+      - run:
+          name: Tag Git Version
+          command: make tag-version
+
+workflows:
+  version: 2
+  build-deploy:
+    jobs:
+      # - run-tests
+
+      - release-vesion:
+          # requires:
+          #   - run-tests
+          filters:
+            branches:
+              only:
+                - master

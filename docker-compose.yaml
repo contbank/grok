@@ -1,0 +1,35 @@
+version: '3'
+services:
+  mongo:
+    image: mongo
+    container_name: grok_mongo
+    ports:
+      - 27017:27017
+  localstack:
+    image: localstack/localstack:0.10.5
+    ports:
+      - "4567-4597:4567-4597"
+      - "${PORT_WEB_UI-8080}:${PORT_WEB_UI-8080}"
+    environment:
+      - SERVICES=sqs,sns
+      - DEBUG=${DEBUG- }
+      - DATA_DIR=${DATA_DIR- }
+      - PORT_WEB_UI=${PORT_WEB_UI- }
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - "${TMPDIR:-/tmp/localstack}:/tmp/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+  tests:
+    image: golang:1.14
+    container_name: grok_tests
+    network_mode: host
+    environment:
+      - AWS_ACCESS_KEY_ID=clienteid
+      - AWS_SECRET_ACCESS_KEY=clientsecret
+    depends_on: 
+      - mongo
+      - localstack
+    command: go test ./... -cover
+    working_dir: /app
+    volumes: 
+      - ./:/app

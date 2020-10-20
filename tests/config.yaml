@@ -1,0 +1,15 @@
+api:
+  host: :9000
+  swagger: tests/swagger.json
+mongo:
+  connection_string: mongodb://localhost:27017
+  database: grok
+aws:
+  sns:
+    fake: true
+    endpoint: http://0.0.0.0:4575
+    region: us-west-2
+  sqs:
+    fake: true
+    endpoint: http://0.0.0.0:4576
+    region: us-west-2
