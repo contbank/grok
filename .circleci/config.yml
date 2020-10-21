@@ -13,6 +13,9 @@ jobs:
     <<: *defaults
     docker:
     - image: circleci/golang:1.14
+      environment:
+        AWS_ACCESS_KEY_ID: clienteid
+        AWS_SECRET_ACCESS_KEY: clientsecret
     - image: mongo
     - image: localstack/localstack:0.10.5
       environment:
