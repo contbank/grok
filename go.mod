@@ -4,7 +4,7 @@ go 1.14
 
 require (
 	cloud.google.com/go/pubsub v1.8.1
-	cloud.google.com/go/storage v1.12.0
+	github.com/Nhanderu/brdoc v1.1.2
 	github.com/auth0-community/go-auth0 v1.0.0
 	github.com/aws/aws-sdk-go v1.34.28
 	github.com/aybabtme/iocontrol v0.0.0-20150809002002-ad15bcfc95a0 // indirect
@@ -20,7 +20,7 @@ require (
 	github.com/spf13/cobra v1.1.1
 	github.com/stretchr/testify v1.6.1
 	go.mongodb.org/mongo-driver v1.4.2
-	google.golang.org/api v0.33.0
+	google.golang.org/api v0.33.0 // indirect
 	google.golang.org/grpc v1.33.0 // indirect
 	gopkg.in/auth0.v3 v3.3.1
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22
