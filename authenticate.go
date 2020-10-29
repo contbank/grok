@@ -110,7 +110,7 @@ func (a *Auth0Authenticate) setKeys(ctx *gin.Context, claims map[string]interfac
 
 		ctx.Set(key, value)
 
-		ctx.Request = ctx.Request.WithContext(context.WithValue(ctx.Request.Context(), key, value))
+		ctx.Request = ctx.Request.WithContext(context.WithValue(ctx.Request.Context(), interface{}(key), value))
 	}
 }
 
