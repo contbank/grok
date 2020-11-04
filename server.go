@@ -133,4 +133,6 @@ func (server *API) Run() {
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		logrus.WithField("error", err).Info("startup error")
 	}
+
+	logrus.Infof("start api %s", server.settings.API.Host)
 }
