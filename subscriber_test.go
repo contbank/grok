@@ -10,41 +10,41 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type PubSubSubscriberTestSuite struct {
+type MessageBrokerSubscriberTestSuite struct {
 	suite.Suite
 	assert     *assert.Assertions
 	settings   *grok.Settings
 	sessionSQS *session.Session
 	sessionSNS *session.Session
-	producer   *grok.PubSubProducer
+	producer   *grok.MessageBrokerProducer
 }
 
-func TestPubSubSubscriberTestSuite(t *testing.T) {
-	suite.Run(t, new(PubSubSubscriberTestSuite))
+func TestMessageBrokerSubscriberTestSuite(t *testing.T) {
+	suite.Run(t, new(MessageBrokerSubscriberTestSuite))
 }
 
-func (s *PubSubSubscriberTestSuite) SetupTest() {
+func (s *MessageBrokerSubscriberTestSuite) SetupTest() {
 	s.assert = assert.New(s.T())
 	s.settings = &grok.Settings{}
 	grok.FromYAML("tests/config.yaml", s.settings)
-	s.sessionSQS = grok.CreatePubSubClient(s.settings.AWS) //grok.FakePubSubClient(s.settings.AWS.SQS.Endpoint, s.settings.AWS.SQS.Region)
-	s.sessionSNS = grok.CreatePubSubClient(s.settings.AWS) //grok.FakePubSubClient(s.settings.AWS.SNS.Endpoint, s.settings.AWS.SNS.Region)
-	s.producer = grok.NewPubSubProducer(s.sessionSNS)
+	s.sessionSQS = grok.CreateMessageBrokerSession(s.settings.AWS.SQS)
+	s.sessionSNS = grok.CreateMessageBrokerSession(s.settings.AWS.SNS)
+	s.producer = grok.NewMessageBrokerProducer(s.sessionSNS)
 
 }
 
-func (s *PubSubSubscriberTestSuite) TestSubscribe() {
+func (s *MessageBrokerSubscriberTestSuite) TestSubscribe() {
 
 	subscriberID := "subs"
-	topicID := "topic"
+	topicID := "topic-teste"
 
 	message := map[string]interface{}{"ping": "pong"}
 
-	grok.NewPubSubSubscriber(
+	messageBroker := grok.NewMessageBrokerSubscriber(
 		grok.WithSessionSQS(s.sessionSQS),
 		grok.WithSessionSNS(s.sessionSNS),
 		grok.WithTopicID(topicID),
-		grok.WithPubSubSubscriberID(subscriberID),
+		grok.WithSubscriberID(subscriberID),
 		grok.WithType(reflect.TypeOf(message)),
 		grok.WithHandler(func(data interface{}) error {
 			value, ok := data.(*map[string]interface{})
@@ -53,7 +53,9 @@ func (s *PubSubSubscriberTestSuite) TestSubscribe() {
 
 			return nil
 		}),
-	).Run()
+	)
+
+	messageBroker.Run()
 
 	err := s.producer.Publish(topicID, message)
 	s.assert.NoError(err)

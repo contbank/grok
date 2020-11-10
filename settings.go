@@ -31,17 +31,16 @@ type MongoSettings struct {
 
 // AWSSettings ...
 type AWSSettings struct {
-	Filename string `yaml:"filename"`
-	SNS      struct {
-		Fake     bool   `yaml:"fake"`
-		Endpoint string `yaml:"endpoint"`
-		Region   string `yaml:"region"`
-	} `yaml:"sns"`
-	SQS struct {
-		Fake     bool   `yaml:"fake"`
-		Endpoint string `yaml:"endpoint"`
-		Region   string `yaml:"region"`
-	} `yaml:"sqs"`
+	SNS *AWSCredentials `yaml:"sns"`
+	SQS *AWSCredentials `yaml:"sqs"`
+}
+
+//AWSCredentials ...
+type AWSCredentials struct {
+	Path     string `yaml:"path"`
+	Fake     bool   `yaml:"fake"`
+	Endpoint string `yaml:"endpoint"`
+	Region   string `yaml:"region"`
 }
 
 // APIAuth ...

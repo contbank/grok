@@ -9,24 +9,24 @@ import (
 	"github.com/aws/aws-sdk-go/service/sns"
 )
 
-// PubSubProducer ...
-type PubSubProducer struct {
+// MessageBrokerProducer ...
+type MessageBrokerProducer struct {
 	snsSvc *sns.SNS
 }
 
-// NewPubSubProducer ...
-func NewPubSubProducer(s *session.Session) *PubSubProducer {
+// NewMessageBrokerProducer ...
+func NewMessageBrokerProducer(s *session.Session) *MessageBrokerProducer {
 	snsSvc := sns.New(s)
-	return &PubSubProducer{snsSvc: snsSvc}
+	return &MessageBrokerProducer{snsSvc: snsSvc}
 }
 
 // Publish ...
-func (p *PubSubProducer) Publish(topicID string, data interface{}) error {
+func (p *MessageBrokerProducer) Publish(topicID string, data interface{}) error {
 	return p.PublishWihAttribrutes(topicID, data, nil)
 }
 
 // PublishWihAttribrutes ...
-func (p *PubSubProducer) PublishWihAttribrutes(topicID string, data interface{}, attributes map[string]string) error {
+func (p *MessageBrokerProducer) PublishWihAttribrutes(topicID string, data interface{}, attributes map[string]string) error {
 	body, err := json.Marshal(data)
 
 	if err != nil {

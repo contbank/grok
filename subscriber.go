@@ -17,29 +17,27 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// PubSubSubscriber ...
-type PubSubSubscriber struct {
-	sqsSvc                 *sqs.SQS
-	snsSvc                 *sns.SNS
-	handler                func(interface{}) error
-	subscriberID           string
-	topicID                string
-	handleType             reflect.Type
-	maxRetries             int
-	producer               *PubSubProducer
-	maxRetriesAttribute    string
-	maxOutstandingMessages int
-	ackDeadline            time.Duration
+// MessageBrokerSubscriber ...
+type MessageBrokerSubscriber struct {
+	sqsSvc              *sqs.SQS
+	snsSvc              *sns.SNS
+	handler             func(interface{}) error
+	subscriberID        string
+	topicID             string
+	handleType          reflect.Type
+	maxRetries          int
+	producer            *MessageBrokerProducer
+	maxRetriesAttribute string
+	ackDeadline         time.Duration
 }
 
-// PubSubSubscriberOption ...
-type PubSubSubscriberOption func(*PubSubSubscriber)
+// MessageBrokerSubscriberOption ...
+type MessageBrokerSubscriberOption func(*MessageBrokerSubscriber)
 
-// NewPubSubSubscriber ...
-func NewPubSubSubscriber(opts ...PubSubSubscriberOption) *PubSubSubscriber {
-	subscriber := new(PubSubSubscriber)
+// NewMessageBrokerSubscriber ...
+func NewMessageBrokerSubscriber(opts ...MessageBrokerSubscriberOption) *MessageBrokerSubscriber {
+	subscriber := new(MessageBrokerSubscriber)
 	subscriber.maxRetries = 5
-	subscriber.maxOutstandingMessages = pubsub.DefaultReceiveSettings.MaxOutstandingMessages
 	subscriber.ackDeadline = 10 * time.Second
 
 	for _, opt := range opts {
@@ -50,70 +48,63 @@ func NewPubSubSubscriber(opts ...PubSubSubscriberOption) *PubSubSubscriber {
 }
 
 // WithSessionSQS ...
-func WithSessionSQS(sessionSQS *session.Session) PubSubSubscriberOption {
-	return func(s *PubSubSubscriber) {
+func WithSessionSQS(sessionSQS *session.Session) MessageBrokerSubscriberOption {
+	return func(s *MessageBrokerSubscriber) {
 		s.sqsSvc = sqs.New(sessionSQS)
 	}
 }
 
 // WithSessionSNS ...
-func WithSessionSNS(sessionSNS *session.Session) PubSubSubscriberOption {
-	return func(s *PubSubSubscriber) {
+func WithSessionSNS(sessionSNS *session.Session) MessageBrokerSubscriberOption {
+	return func(s *MessageBrokerSubscriber) {
 		s.snsSvc = sns.New(sessionSNS)
 	}
 }
 
 // WithHandler ...
-func WithHandler(h func(interface{}) error) PubSubSubscriberOption {
-	return func(s *PubSubSubscriber) {
+func WithHandler(h func(interface{}) error) MessageBrokerSubscriberOption {
+	return func(s *MessageBrokerSubscriber) {
 		s.handler = h
 	}
 }
 
-// WithPubSubSubscriberID ...
-func WithPubSubSubscriberID(id string) PubSubSubscriberOption {
-	return func(s *PubSubSubscriber) {
+// WithSubscriberID ...
+func WithSubscriberID(id string) MessageBrokerSubscriberOption {
+	return func(s *MessageBrokerSubscriber) {
 		s.subscriberID = id
 	}
 }
 
 // WithTopicID ...
-func WithTopicID(t string) PubSubSubscriberOption {
-	return func(s *PubSubSubscriber) {
+func WithTopicID(t string) MessageBrokerSubscriberOption {
+	return func(s *MessageBrokerSubscriber) {
 		s.topicID = t
 	}
 }
 
 // WithType ...
-func WithType(t reflect.Type) PubSubSubscriberOption {
-	return func(s *PubSubSubscriber) {
+func WithType(t reflect.Type) MessageBrokerSubscriberOption {
+	return func(s *MessageBrokerSubscriber) {
 		s.handleType = t
 	}
 }
 
 // WithMaxRetries - default 5
-func WithMaxRetries(maxRetries int) PubSubSubscriberOption {
-	return func(s *PubSubSubscriber) {
+func WithMaxRetries(maxRetries int) MessageBrokerSubscriberOption {
+	return func(s *MessageBrokerSubscriber) {
 		s.maxRetries = maxRetries
 	}
 }
 
-//WithMaxOutstandingMessages ...
-func WithMaxOutstandingMessages(maxOutstandingMessages int) PubSubSubscriberOption {
-	return func(s *PubSubSubscriber) {
-		s.maxOutstandingMessages = maxOutstandingMessages
-	}
-}
-
 //WithAckDeadline ...
-func WithAckDeadline(t time.Duration) PubSubSubscriberOption {
-	return func(s *PubSubSubscriber) {
+func WithAckDeadline(t time.Duration) MessageBrokerSubscriberOption {
+	return func(s *MessageBrokerSubscriber) {
 		s.ackDeadline = t
 	}
 }
 
 // Run ...
-func (s *PubSubSubscriber) Run() {
+func (s *MessageBrokerSubscriber) Run() {
 	queueURL, err := createSubscriptionIfNotExists(s.sqsSvc, s.snsSvc, s.subscriberID, s.topicID, s.ackDeadline)
 
 	if err != nil {
@@ -198,7 +189,7 @@ func createSubscriptionIfNotExists(sqsSvc *sqs.SQS, snsSvc *sns.SNS, subscriberI
 	return queueURL, nil
 }
 
-func (s *PubSubSubscriber) retry(message *pubsub.Message, body interface{}) error {
+func (s *MessageBrokerSubscriber) retry(message *pubsub.Message, body interface{}) error {
 	retries := s.getRetries(message)
 	retries++
 
@@ -207,7 +198,7 @@ func (s *PubSubSubscriber) retry(message *pubsub.Message, body interface{}) erro
 	return s.producer.PublishWihAttribrutes(s.topicID, body, message.Attributes)
 }
 
-func (s *PubSubSubscriber) dlq(message *pubsub.Message, e error) error {
+func (s *MessageBrokerSubscriber) dlq(message *pubsub.Message, e error) error {
 	dlq := fmt.Sprintf("%s_dlq", s.topicID)
 
 	logrus.Infof("sending message %s to %s", message.ID, dlq)
@@ -224,7 +215,7 @@ func (s *PubSubSubscriber) dlq(message *pubsub.Message, e error) error {
 	return s.producer.PublishWihAttribrutes(dlq, message.Data, attributes)
 }
 
-func (s *PubSubSubscriber) getRetries(message *pubsub.Message) int {
+func (s *MessageBrokerSubscriber) getRetries(message *pubsub.Message) int {
 	if message.Attributes == nil {
 		message.Attributes = make(map[string]string)
 	}
@@ -239,7 +230,7 @@ func (s *PubSubSubscriber) getRetries(message *pubsub.Message) int {
 	return retries
 }
 
-func (s *PubSubSubscriber) checkMessages(sqsSvc *sqs.SQS, queueURL *string) {
+func (s *MessageBrokerSubscriber) checkMessages(sqsSvc *sqs.SQS, queueURL *string) {
 	for {
 		retrieveMessageRequest := sqs.ReceiveMessageInput{
 			QueueUrl: queueURL,
