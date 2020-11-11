@@ -20,6 +20,8 @@ func NewValidator() *validator.Validate {
 
 	validate.RegisterValidation("objectid", ObjectID)
 	validate.RegisterValidation("cnpj", CNPJ)
+	validate.RegisterValidation("cpf", CPF)
+	validate.RegisterValidation("cnpjcpf", CNPJCPF)
 
 	return validate
 }
@@ -52,4 +54,29 @@ func CNPJ(fl validator.FieldLevel) bool {
 	default:
 		return false
 	}
+}
+
+//CPF ...
+func CPF(fl validator.FieldLevel) bool {
+	field := fl.Field()
+
+	switch field.Kind() {
+	case reflect.String:
+		s := strings.Replace(field.String(), ".", "", -1)
+		s = strings.Replace(s, "-", "", -1)
+		return brdoc.IsCPF(s)
+	default:
+		return false
+	}
+}
+
+//CNPJCPF ...
+func CNPJCPF(fl validator.FieldLevel) bool {
+	result := CNPJ(fl)
+
+	if !result {
+		result = CPF(fl)
+	}
+
+	return result
 }
