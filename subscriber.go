@@ -104,7 +104,7 @@ func WithAckDeadline(t time.Duration) MessageBrokerSubscriberOption {
 }
 
 // Run ...
-func (s *MessageBrokerSubscriber) Run() {
+func (s *MessageBrokerSubscriber) Run() error {
 	queueURL, err := createSubscriptionIfNotExists(s.sqsSvc, s.snsSvc, s.subscriberID, s.topicID, s.ackDeadline)
 
 	if err != nil {
@@ -113,7 +113,7 @@ func (s *MessageBrokerSubscriber) Run() {
 	}
 
 	logrus.Infof("starting consumer %s with topic %s", s.subscriberID, s.topicID)
-	s.checkMessages(s.sqsSvc, queueURL)
+	return s.checkMessages(s.sqsSvc, queueURL)
 }
 
 func createSubscriptionIfNotExists(sqsSvc *sqs.SQS, snsSvc *sns.SNS, subscriberID, topicID string, ackDeadline time.Duration) (*string, error) {
@@ -236,7 +236,7 @@ func (s *MessageBrokerSubscriber) getRetries(message *pubsub.Message) int {
 	return retries
 }
 
-func (s *MessageBrokerSubscriber) checkMessages(sqsSvc *sqs.SQS, queueURL *string) {
+func (s *MessageBrokerSubscriber) checkMessages(sqsSvc *sqs.SQS, queueURL *string) error {
 	for {
 		retrieveMessageRequest := sqs.ReceiveMessageInput{
 			QueueUrl: queueURL,
@@ -247,6 +247,7 @@ func (s *MessageBrokerSubscriber) checkMessages(sqsSvc *sqs.SQS, queueURL *strin
 		if err != nil {
 			logrus.WithError(err).
 				Errorf("error receive message")
+			return err
 		}
 
 		if len(retrieveMessageResponse.Messages) > 0 {
@@ -295,8 +296,8 @@ func (s *MessageBrokerSubscriber) checkMessages(sqsSvc *sqs.SQS, queueURL *strin
 			sqsSvc.DeleteMessageBatch(&deleteMessageRequest)
 
 		}
-
 	}
+
 }
 
 func convertQueueURLToARN(inputURL string) string {

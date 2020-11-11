@@ -60,7 +60,9 @@ func (s *MessageBrokerSubscriberTestSuite) TestSubscribe() {
 			}),
 		)
 
-		messageBroker.Run()
+		err := messageBroker.Run()
+
+		s.assert.NoError(err)
 	}()
 
 	time.Sleep(time.Second * 3)
