@@ -9,13 +9,14 @@ services:
     image: localstack/localstack:0.10.5
     ports:
       - "4567-4597:4567-4597"
-      - "${PORT_WEB_UI-8080}:${PORT_WEB_UI-8080}"
+      - "8080:8080"
     environment:
       - SERVICES=sqs,sns
-      - DEBUG=${DEBUG- }
-      - DATA_DIR=${DATA_DIR- }
-      - PORT_WEB_UI=${PORT_WEB_UI- }
+      - DEBUG=1
+      - DATA_DIR=/tmp/localstack
+      - PORT_WEB_UI=8080
       - DOCKER_HOST=unix:///var/run/docker.sock
+      - DEFAULT_REGION=us-west-2
     volumes:
       - "${TMPDIR:-/tmp/localstack}:/tmp/localstack"
       - "/var/run/docker.sock:/var/run/docker.sock"

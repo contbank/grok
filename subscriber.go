@@ -113,13 +113,19 @@ func (s *MessageBrokerSubscriber) Run() {
 	}
 
 	logrus.Infof("starting consumer %s with topic %s", s.subscriberID, s.topicID)
-	go s.checkMessages(s.sqsSvc, queueURL)
+	s.checkMessages(s.sqsSvc, queueURL)
 }
 
 func createSubscriptionIfNotExists(sqsSvc *sqs.SQS, snsSvc *sns.SNS, subscriberID, topicID string, ackDeadline time.Duration) (*string, error) {
-	listQueueResults, _ := sqsSvc.ListQueues(&sqs.ListQueuesInput{
+	listQueueResults, err := sqsSvc.ListQueues(&sqs.ListQueuesInput{
 		QueueNamePrefix: aws.String(subscriberID),
 	})
+
+	if err != nil {
+		logrus.WithError(err).
+			Errorf("error list queues %s", subscriberID)
+		return nil, err
+	}
 
 	var queueURL *string
 
@@ -236,7 +242,12 @@ func (s *MessageBrokerSubscriber) checkMessages(sqsSvc *sqs.SQS, queueURL *strin
 			QueueUrl: queueURL,
 		}
 
-		retrieveMessageResponse, _ := sqsSvc.ReceiveMessage(&retrieveMessageRequest)
+		retrieveMessageResponse, err := sqsSvc.ReceiveMessage(&retrieveMessageRequest)
+
+		if err != nil {
+			logrus.WithError(err).
+				Errorf("error receive message")
+		}
 
 		if len(retrieveMessageResponse.Messages) > 0 {
 
@@ -289,8 +300,12 @@ func (s *MessageBrokerSubscriber) checkMessages(sqsSvc *sqs.SQS, queueURL *strin
 }
 
 func convertQueueURLToARN(inputURL string) string {
-	queueARN := strings.Replace(strings.Replace(strings.Replace(inputURL, "https://sqs.", "arn:aws:sqs:", -1), ".amazonaws.com/", ":", -1), "/", ":", -1)
-	queueARN = strings.Replace(strings.Replace(strings.Replace(queueARN, "https://sqs.", "arn:aws:sqs:", -1), ".localhost/", ":", -1), "/", ":", -1)
+	var queueARN string
+	if strings.Contains(inputURL, "localhost") {
+		queueARN = strings.Replace(strings.Replace(strings.Replace(inputURL, "http://", "arn:aws:sqs:", -1), "localhost:4576/queue", "us-west-2:000000000000", -1), "/", ":", -1)
+	} else {
+		queueARN = strings.Replace(strings.Replace(strings.Replace(inputURL, "https://sqs.", "arn:aws:sqs:", -1), ".amazonaws.com/", ":", -1), "/", ":", -1)
+	}
 
 	return queueARN
 }

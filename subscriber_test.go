@@ -3,6 +3,7 @@ package grok_test
 import (
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/contbank/grok"
@@ -34,30 +35,43 @@ func (s *MessageBrokerSubscriberTestSuite) SetupTest() {
 }
 
 func (s *MessageBrokerSubscriberTestSuite) TestSubscribe() {
+	received := make(chan bool, 1)
 
 	subscriberID := "subs"
 	topicID := "topic-teste"
 
 	message := map[string]interface{}{"ping": "pong"}
 
-	messageBroker := grok.NewMessageBrokerSubscriber(
-		grok.WithSessionSQS(s.sessionSQS),
-		grok.WithSessionSNS(s.sessionSNS),
-		grok.WithTopicID(topicID),
-		grok.WithSubscriberID(subscriberID),
-		grok.WithType(reflect.TypeOf(message)),
-		grok.WithHandler(func(data interface{}) error {
-			value, ok := data.(*map[string]interface{})
-			s.assert.True(ok)
-			s.assert.Equal("pong", (*value)["ping"])
+	go func() {
+		messageBroker := grok.NewMessageBrokerSubscriber(
+			grok.WithSessionSQS(s.sessionSQS),
+			grok.WithSessionSNS(s.sessionSNS),
+			grok.WithTopicID(topicID),
+			grok.WithSubscriberID(subscriberID),
+			grok.WithType(reflect.TypeOf(message)),
+			grok.WithHandler(func(data interface{}) error {
+				defer func() { received <- true }()
 
-			return nil
-		}),
-	)
+				value, ok := data.(*map[string]interface{})
+				s.assert.True(ok)
+				s.assert.Equal("pong", (*value)["ping"])
 
-	messageBroker.Run()
+				return nil
+			}),
+		)
+
+		messageBroker.Run()
+	}()
+
+	time.Sleep(time.Second * 3)
 
 	err := s.producer.Publish(topicID, message)
+
+	if err != nil {
+		received <- true
+	}
+
 	s.assert.NoError(err)
 
+	<-received
 }
