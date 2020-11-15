@@ -177,13 +177,24 @@ func createSubscriptionIfNotExists(sqsSvc *sqs.SQS, snsSvc *sns.SNS, subscriberI
 
 	policyContent := "{\"Version\": \"2012-10-17\",  \"Id\": \"" + queueARN + "/SQSDefaultPolicy\",  \"Statement\": [    {     \"Sid\": \"Sid1580665629194\",      \"Effect\": \"Allow\",      \"Principal\": {        \"AWS\": \"*\"      },      \"Action\": \"SQS:SendMessage\",      \"Resource\": \"" + queueARN + "\",      \"Condition\": {        \"ArnEquals\": {         \"aws:SourceArn\": \"" + *topicArn + "\"        }      }    }  ]}"
 
-	redrivePolicyContent := "{\"deadLetterTargetArn\": \"" + dlqARN + "\" , \"maxReceiveCount\": \"" + strconv.Itoa(maxRetries) + "\" }"
+	policy := map[string]string{
+		"deadLetterTargetArn": dlqARN,
+		"maxReceiveCount":     strconv.Itoa(maxRetries),
+	}
+
+	redrivePolicyContent, err := json.Marshal(policy)
+
+	if err != nil {
+		logrus.WithError(err).
+			Errorf("error marshal redrive policy %s", subscriberID)
+		return nil, err
+	}
 
 	setQueueAttrInput := sqs.SetQueueAttributesInput{
 		QueueUrl: queueURL,
 		Attributes: map[string]*string{
 			sqs.QueueAttributeNamePolicy:        aws.String(policyContent),
-			sqs.QueueAttributeNameRedrivePolicy: aws.String(redrivePolicyContent),
+			sqs.QueueAttributeNameRedrivePolicy: aws.String(string(redrivePolicyContent)),
 		},
 	}
 
