@@ -21,6 +21,7 @@ jobs:
       environment:
         DEBUG: 1
         SERVICES: sqs,sns
+        DEFAULT_REGION: us-west-2
     steps:
       - checkout
       - run:
