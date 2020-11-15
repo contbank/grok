@@ -4,11 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"strconv"
 	"strings"
-	"time"
-
-	"cloud.google.com/go/pubsub"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -28,7 +24,6 @@ type MessageBrokerSubscriber struct {
 	maxRetries          int
 	producer            *MessageBrokerProducer
 	maxRetriesAttribute string
-	ackDeadline         time.Duration
 }
 
 // MessageBrokerSubscriberOption ...
@@ -38,7 +33,6 @@ type MessageBrokerSubscriberOption func(*MessageBrokerSubscriber)
 func NewMessageBrokerSubscriber(opts ...MessageBrokerSubscriberOption) *MessageBrokerSubscriber {
 	subscriber := new(MessageBrokerSubscriber)
 	subscriber.maxRetries = 5
-	subscriber.ackDeadline = 10 * time.Second
 
 	for _, opt := range opts {
 		opt(subscriber)
@@ -96,16 +90,9 @@ func WithMaxRetries(maxRetries int) MessageBrokerSubscriberOption {
 	}
 }
 
-//WithAckDeadline ...
-func WithAckDeadline(t time.Duration) MessageBrokerSubscriberOption {
-	return func(s *MessageBrokerSubscriber) {
-		s.ackDeadline = t
-	}
-}
-
 // Run ...
 func (s *MessageBrokerSubscriber) Run() error {
-	queueURL, err := createSubscriptionIfNotExists(s.sqsSvc, s.snsSvc, s.subscriberID, s.topicID, s.ackDeadline)
+	queueURL, err := createSubscriptionIfNotExists(s.sqsSvc, s.snsSvc, s.subscriberID, s.topicID, s.maxRetries)
 
 	if err != nil {
 		logrus.WithError(err).
@@ -116,7 +103,7 @@ func (s *MessageBrokerSubscriber) Run() error {
 	return s.checkMessages(s.sqsSvc, queueURL)
 }
 
-func createSubscriptionIfNotExists(sqsSvc *sqs.SQS, snsSvc *sns.SNS, subscriberID, topicID string, ackDeadline time.Duration) (*string, error) {
+func createSubscriptionIfNotExists(sqsSvc *sqs.SQS, snsSvc *sns.SNS, subscriberID, topicID string, maxRetries int) (*string, error) {
 	listQueueResults, err := sqsSvc.ListQueues(&sqs.ListQueuesInput{
 		QueueNamePrefix: aws.String(subscriberID),
 	})
@@ -130,7 +117,8 @@ func createSubscriptionIfNotExists(sqsSvc *sqs.SQS, snsSvc *sns.SNS, subscriberI
 	var queueURL *string
 
 	for _, t := range listQueueResults.QueueUrls {
-		if strings.Contains(*t, subscriberID) {
+		parts := strings.Split(*t, "/")
+		if strings.Compare(parts[4], subscriberID) == 0 {
 			queueURL = t
 			break
 		}
@@ -151,6 +139,20 @@ func createSubscriptionIfNotExists(sqsSvc *sqs.SQS, snsSvc *sns.SNS, subscriberI
 	}
 
 	queueURL = resp.QueueUrl
+	queueARN := convertQueueURLToARN(*queueURL)
+
+	respdlq, err := sqsSvc.CreateQueue(&sqs.CreateQueueInput{
+		QueueName: aws.String(fmt.Sprintf("%s_dlq", subscriberID)),
+	})
+
+	if err != nil {
+		logrus.WithError(err).
+			Errorf("error creating queue dlq %s", subscriberID)
+		return nil, err
+	}
+
+	dlqURL := respdlq.QueueUrl
+	dlqARN := convertQueueURLToARN(*dlqURL)
 
 	topicArn, err := createTopicIfNotExists(snsSvc, topicID)
 
@@ -159,8 +161,6 @@ func createSubscriptionIfNotExists(sqsSvc *sqs.SQS, snsSvc *sns.SNS, subscriberI
 			Errorf("error creating topic %s", topicID)
 		return nil, err
 	}
-
-	queueARN := convertQueueURLToARN(*queueURL)
 
 	_, err = snsSvc.Subscribe(&sns.SubscribeInput{
 		TopicArn: topicArn,
@@ -176,12 +176,14 @@ func createSubscriptionIfNotExists(sqsSvc *sqs.SQS, snsSvc *sns.SNS, subscriberI
 
 	policyContent := "{\"Version\": \"2012-10-17\",  \"Id\": \"" + queueARN + "/SQSDefaultPolicy\",  \"Statement\": [    {     \"Sid\": \"Sid1580665629194\",      \"Effect\": \"Allow\",      \"Principal\": {        \"AWS\": \"*\"      },      \"Action\": \"SQS:SendMessage\",      \"Resource\": \"" + queueARN + "\",      \"Condition\": {        \"ArnEquals\": {         \"aws:SourceArn\": \"" + *topicArn + "\"        }      }    }  ]}"
 
-	attr := make(map[string]*string, 1)
-	attr["Policy"] = &policyContent
+	redrivePolicyContent := "{\"deadLetterTargetArn\": \"" + dlqARN + "\" , \"maxReceiveCount\":" + string(maxRetries) + "}"
 
 	setQueueAttrInput := sqs.SetQueueAttributesInput{
-		QueueUrl:   queueURL,
-		Attributes: attr,
+		QueueUrl: queueURL,
+		Attributes: map[string]*string{
+			sqs.QueueAttributeNamePolicy:        aws.String(policyContent),
+			sqs.QueueAttributeNameRedrivePolicy: aws.String(redrivePolicyContent),
+		},
 	}
 
 	_, err = sqsSvc.SetQueueAttributes(&setQueueAttrInput)
@@ -193,47 +195,6 @@ func createSubscriptionIfNotExists(sqsSvc *sqs.SQS, snsSvc *sns.SNS, subscriberI
 	}
 
 	return queueURL, nil
-}
-
-func (s *MessageBrokerSubscriber) retry(message *pubsub.Message, body interface{}) error {
-	retries := s.getRetries(message)
-	retries++
-
-	message.Attributes[s.maxRetriesAttribute] = strconv.Itoa(retries)
-
-	return s.producer.PublishWihAttribrutes(s.topicID, body, message.Attributes)
-}
-
-func (s *MessageBrokerSubscriber) dlq(message *pubsub.Message, e error) error {
-	dlq := fmt.Sprintf("%s_dlq", s.topicID)
-
-	logrus.Infof("sending message %s to %s", message.ID, dlq)
-
-	_, err := createTopicIfNotExists(s.snsSvc, dlq)
-
-	if err != nil {
-		return err
-	}
-
-	attributes := make(map[string]string)
-	attributes["error"] = e.Error()
-
-	return s.producer.PublishWihAttribrutes(dlq, message.Data, attributes)
-}
-
-func (s *MessageBrokerSubscriber) getRetries(message *pubsub.Message) int {
-	if message.Attributes == nil {
-		message.Attributes = make(map[string]string)
-	}
-
-	retries := 0
-	attribute, ok := message.Attributes[s.maxRetriesAttribute]
-
-	if ok {
-		retries, _ = strconv.Atoi(attribute)
-	}
-
-	return retries
 }
 
 func (s *MessageBrokerSubscriber) checkMessages(sqsSvc *sqs.SQS, queueURL *string) error {
