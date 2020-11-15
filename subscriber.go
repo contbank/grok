@@ -176,7 +176,7 @@ func createSubscriptionIfNotExists(sqsSvc *sqs.SQS, snsSvc *sns.SNS, subscriberI
 
 	policyContent := "{\"Version\": \"2012-10-17\",  \"Id\": \"" + queueARN + "/SQSDefaultPolicy\",  \"Statement\": [    {     \"Sid\": \"Sid1580665629194\",      \"Effect\": \"Allow\",      \"Principal\": {        \"AWS\": \"*\"      },      \"Action\": \"SQS:SendMessage\",      \"Resource\": \"" + queueARN + "\",      \"Condition\": {        \"ArnEquals\": {         \"aws:SourceArn\": \"" + *topicArn + "\"        }      }    }  ]}"
 
-	redrivePolicyContent := "{\"deadLetterTargetArn\": \"" + dlqARN + "\" , \"maxReceiveCount\":" + string(maxRetries) + "}"
+	redrivePolicyContent := "{\"deadLetterTargetArn\": \"" + dlqARN + "\" , \"maxReceiveCount\": \"" + string(maxRetries) + "\" }"
 
 	setQueueAttrInput := sqs.SetQueueAttributesInput{
 		QueueUrl: queueURL,
