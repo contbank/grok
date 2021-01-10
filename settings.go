@@ -33,6 +33,7 @@ type MongoSettings struct {
 type AWSSettings struct {
 	SNS *AWSCredentials `yaml:"sns"`
 	SQS *AWSCredentials `yaml:"sqs"`
+	IAM *AWSCredentials `yaml:"iam"`
 }
 
 //AWSCredentials ...
