@@ -5,6 +5,7 @@ import (
 	"math"
 	"math/rand"
 	"time"
+	"strings"
 )
 
 func random(n float64) float64 {
@@ -55,4 +56,14 @@ func GeneratorCNPJ() string {
 	resultado := fmt.Sprintf("%d%d.%d%d%d.%d%d%d/%d%d%d%d-%d%d", int(n1), int(n2), int(n3), int(n4), int(n5), int(n6), int(n7), int(n8), int(n9), int(n10), int(n11), int(n12), int(d1), int(d2))
 
 	return resultado
+}
+
+//GeneratorIDBase ...
+func GeneratorIDBase(n int) string {
+	const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
+	b := make([]byte, n)
+	for i := range b {
+	b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+	return strings.ToUpper(string(b))
 }
