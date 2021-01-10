@@ -25,7 +25,7 @@ func (s *ProducerTestSuite) SetupTest() {
 }
 
 func (s *ProducerTestSuite) TestPublish() {
-	session := grok.FakeMessageBrokerSession(s.settings.AWS.SNS.Endpoint, s.settings.AWS.SNS.Region)
+	session := grok.FakeSession(s.settings.AWS.SNS.Endpoint, s.settings.AWS.SNS.Region)
 	producer := grok.NewMessageBrokerProducer(session)
 
 	err := producer.Publish("test-topic", map[string]interface{}{"ping": "pong"})

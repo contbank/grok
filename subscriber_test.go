@@ -28,8 +28,8 @@ func (s *MessageBrokerSubscriberTestSuite) SetupTest() {
 	s.assert = assert.New(s.T())
 	s.settings = &grok.Settings{}
 	grok.FromYAML("tests/config.yaml", s.settings)
-	s.sessionSQS = grok.CreateMessageBrokerSession(s.settings.AWS.SQS)
-	s.sessionSNS = grok.CreateMessageBrokerSession(s.settings.AWS.SNS)
+	s.sessionSQS = grok.CreateSession(s.settings.AWS.SQS)
+	s.sessionSNS = grok.CreateSession(s.settings.AWS.SNS)
 	s.producer = grok.NewMessageBrokerProducer(s.sessionSNS)
 
 }
