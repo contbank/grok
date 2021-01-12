@@ -21,9 +21,9 @@ func NewMongoConnection(connectionString string, caFilePath *string) *mongo.Clie
 		tlsConfig := getCustomTLSConfig(*caFilePath)
 
 		client, err = mongo.NewClient(options.Client().ApplyURI(connectionString).SetTLSConfig(tlsConfig))
+	} else {
+		client, err = mongo.NewClient(options.Client().ApplyURI(connectionString))
 	}
-
-	client, err = mongo.NewClient(options.Client().ApplyURI(connectionString))
 
 	if err != nil {
 		logrus.WithError(err).Panic("Error connecting to MongoDB")
