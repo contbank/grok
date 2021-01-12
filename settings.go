@@ -25,8 +25,9 @@ type APISettings struct {
 
 // MongoSettings ...
 type MongoSettings struct {
-	ConnectionString string `yaml:"connection_string"`
-	Database         string `yaml:"database"`
+	CaFilePath       *string `yaml:"ca_file_path"`
+	ConnectionString string  `yaml:"connection_string"`
+	Database         string  `yaml:"database"`
 }
 
 // AWSSettings ...

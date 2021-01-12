@@ -26,12 +26,12 @@ func (s *MongoTestSuite) SetupSuite() {
 
 func (s *MongoTestSuite) TestConnect() {
 	s.assert.NotPanics(func() {
-		grok.NewMongoConnection(s.settings.Mongo.ConnectionString)
+		grok.NewMongoConnection(s.settings.Mongo.ConnectionString, nil)
 	})
 }
 
 func (s *MongoTestSuite) TestConnectFail() {
 	s.assert.Panics(func() {
-		grok.NewMongoConnection("nohost")
+		grok.NewMongoConnection("nohost", nil)
 	})
 }

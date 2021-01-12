@@ -38,7 +38,7 @@ func (s *RepositoryTestSuite) SetupTest() {
 	err := grok.FromYAML("tests/config.yaml", s.settings)
 	s.assert.NoError(err)
 
-	s.client = grok.NewMongoConnection(s.settings.Mongo.ConnectionString)
+	s.client = grok.NewMongoConnection(s.settings.Mongo.ConnectionString, s.settings.Mongo.CaFilePath)
 	s.collection = s.client.Database(s.settings.Mongo.Database).Collection("grok")
 	s.repository = grok.NewMongoRepository("ID", reflect.TypeOf(MongoTestDocument{}), s.collection)
 }

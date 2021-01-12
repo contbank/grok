@@ -2,6 +2,9 @@ package grok
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"io/ioutil"
 
 	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -10,8 +13,17 @@ import (
 )
 
 // NewMongoConnection ...
-func NewMongoConnection(connectionString string) *mongo.Client {
-	client, err := mongo.NewClient(options.Client().ApplyURI(connectionString))
+func NewMongoConnection(connectionString string, caFilePath *string) *mongo.Client {
+	var client *mongo.Client
+	var err error
+
+	if caFilePath != nil {
+		tlsConfig := getCustomTLSConfig(*caFilePath)
+
+		client, err = mongo.NewClient(options.Client().ApplyURI(connectionString).SetTLSConfig(tlsConfig))
+	}
+
+	client, err = mongo.NewClient(options.Client().ApplyURI(connectionString))
 
 	if err != nil {
 		logrus.WithError(err).Panic("Error connecting to MongoDB")
@@ -26,4 +38,26 @@ func NewMongoConnection(connectionString string) *mongo.Client {
 	}
 
 	return client
+}
+
+func getCustomTLSConfig(caFile string) *tls.Config {
+	tlsConfig := new(tls.Config)
+	certs, err := ioutil.ReadFile(caFile)
+
+	if err != nil {
+		logrus.WithError(err).
+			Panic("error loading ca")
+		return nil
+	}
+
+	tlsConfig.RootCAs = x509.NewCertPool()
+	ok := tlsConfig.RootCAs.AppendCertsFromPEM(certs)
+
+	if !ok {
+		logrus.WithError(err).
+			Panic("error tls")
+		return nil
+	}
+
+	return tlsConfig
 }

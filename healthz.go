@@ -25,7 +25,7 @@ type HealtzOption func(*Healthz)
 func WithMongo() HealtzOption {
 	return func(h *Healthz) {
 		h.checks = append(h.checks, func(healthz *Healthz) error {
-			client := NewMongoConnection(h.settings.Mongo.ConnectionString)
+			client := NewMongoConnection(h.settings.Mongo.ConnectionString, h.settings.Mongo.CaFilePath)
 			defer client.Disconnect(context.Background())
 
 			return client.Ping(context.Background(), readpref.Primary())
