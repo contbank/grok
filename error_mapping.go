@@ -58,7 +58,7 @@ func (mapping ErrorMapping) mappingMongoError(err error) error {
 	}
 
 	if exp, ok := err.(mongo.CommandError); ok {
-		if result, has := mapping[mongo.CommandError{Code: exp.Code}]; has {
+		if result, has := mapping[mongo.WriteError{Code: int(exp.Code)}]; has {
 			return result
 		}
 		return nil
