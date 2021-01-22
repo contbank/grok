@@ -104,10 +104,6 @@ func (a *Auth0Authenticate) setKeys(ctx *gin.Context, claims map[string]interfac
 			key = strings.Replace(key, AuthClaimNamespace, "", -1)
 		}
 
-		if key == "sub" {
-			value = parseSub(value.(string))
-		}
-
 		ctx.Set(key, value)
 
 		ctx.Request = ctx.Request.WithContext(context.WithValue(ctx.Request.Context(), interface{}(key), value))
