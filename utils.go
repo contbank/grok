@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
-	"time"
+	"strconv"
 	"strings"
+	"time"
 )
 
 func random(n float64) float64 {
@@ -17,6 +18,36 @@ func random(n float64) float64 {
 
 func mod(dividendo float64, divisor float64) float64 {
 	return math.Round(dividendo - (math.Floor(dividendo/divisor) * divisor))
+}
+
+//GeneratorCPF ...
+func GeneratorCPF() string {
+	cpfString := ""
+
+	rand.Seed(time.Now().UTC().UnixNano())
+	cpf := rand.Perm(9)
+	cpf = append(cpf, verify(cpf, len(cpf)))
+	cpf = append(cpf, verify(cpf, len(cpf)))
+
+	for _, c := range cpf {
+		cpfString += strconv.Itoa(c)
+	}
+
+	return cpfString
+}
+
+func verify(data []int, n int) int {
+	var total int
+
+	for i := 0; i < n; i++ {
+		total += data[i] * (n + 1 - i)
+	}
+
+	total = total % 11
+	if total < 2 {
+		return 0
+	}
+	return 11 - total
 }
 
 //GeneratorCNPJ ...
@@ -63,7 +94,7 @@ func GeneratorIDBase(n int) string {
 	const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
 	b := make([]byte, n)
 	for i := range b {
-	b[i] = letterBytes[rand.Intn(len(letterBytes))]
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
 	}
 	return strings.ToUpper(string(b))
 }
