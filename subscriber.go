@@ -276,7 +276,7 @@ func (s *MessageBrokerSubscriber) checkMessages(sqsSvc *sqs.SQS, queueURL *strin
 func convertQueueURLToARN(inputURL string) string {
 	var queueARN string
 	if strings.Contains(inputURL, "localhost") {
-		queueARN = strings.Replace(strings.Replace(strings.Replace(inputURL, "http://", "arn:aws:sqs:", -1), "localhost:4576/queue", "us-west-2:000000000000", -1), "/", ":", -1)
+		queueARN = strings.Replace(strings.Replace(strings.Replace(inputURL, "http://", "arn:aws:sqs:", -1), "localhost:4566/queue", "us-west-2:000000000000", -1), "/", ":", -1)
 	} else {
 		queueARN = strings.Replace(strings.Replace(strings.Replace(inputURL, "https://sqs.", "arn:aws:sqs:", -1), ".amazonaws.com/", ":", -1), "/", ":", -1)
 	}
