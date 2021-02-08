@@ -6,12 +6,10 @@ mongo:
   database: grok
 aws:
   sns:
-    path: /Users/firmiano/.aws/credentials
     fake: true
-    endpoint: http://0.0.0.0:4575
+    endpoint: http://0.0.0.0:4566
     region: us-west-2
   sqs:
-    path: /Users/firmiano/.aws/credentials
     fake: true
-    endpoint: http://0.0.0.0:4576
+    endpoint: http://0.0.0.0:4566
     region: us-west-2

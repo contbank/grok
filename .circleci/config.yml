@@ -17,13 +17,20 @@ jobs:
         AWS_ACCESS_KEY_ID: clienteid
         AWS_SECRET_ACCESS_KEY: clientsecret
     - image: mongo
-    - image: localstack/localstack:0.10.5
+    - image: localstack/localstack
       environment:
         DEBUG: 1
         SERVICES: sqs,sns
         DEFAULT_REGION: us-west-2
     steps:
       - checkout
+      - run: 
+          name: Waiting for localstack ...
+          command: |
+           until $(nc -zv localhost 4566); do
+                printf '.'
+                sleep 1
+            done
       - run:
           name: Run Rebase
           command: make run-rebase

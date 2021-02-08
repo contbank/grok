@@ -6,15 +6,13 @@ services:
     ports:
       - 27017:27017
   localstack:
-    image: localstack/localstack:0.10.5
+    image: localstack/localstack
     ports:
-      - "4567-4597:4567-4597"
-      - "8080:8080"
+      - "4566:4566"
     environment:
       - SERVICES=sqs,sns
       - DEBUG=1
-      - DATA_DIR=/tmp/localstack
-      - PORT_WEB_UI=8080
+      - DATA_DIR=${DATA_DIR- }
       - DOCKER_HOST=unix:///var/run/docker.sock
       - DEFAULT_REGION=us-west-2
     volumes:
