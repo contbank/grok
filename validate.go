@@ -18,12 +18,23 @@ var (
 func NewValidator() *validator.Validate {
 	validate := validator.New()
 
+	validate.RegisterTagNameFunc(JSONTagName)
+
 	validate.RegisterValidation("objectid", ObjectID)
 	validate.RegisterValidation("cnpj", CNPJ)
 	validate.RegisterValidation("cpf", CPF)
 	validate.RegisterValidation("cnpjcpf", CNPJCPF)
 
 	return validate
+}
+
+//JSONTagName ...
+func JSONTagName(fld reflect.StructField) string {
+	name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
+	if name == "-" {
+		return ""
+	}
+	return name
 }
 
 //ObjectID ...
