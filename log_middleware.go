@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -25,7 +26,7 @@ func (w *bodyLogWriter) Write(b []byte) (int, error) {
 //LogMiddleware ...
 func LogMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		defer recovery()
+		defer recovery(c)
 		defer c.Request.Body.Close()
 
 		requestID := uuid.New()
@@ -98,8 +99,10 @@ func response(writer *bodyLogWriter) interface{} {
 	return r
 }
 
-func recovery() {
+func recovery(c *gin.Context) {
 	if err := recover(); err != nil {
 		logrus.WithField("error", err).Error("Error on logging middleware")
+		internalServerError := NewError(http.StatusInternalServerError, "internal server error")
+		c.AbortWithStatusJSON(http.StatusInternalServerError, internalServerError)
 	}
 }
