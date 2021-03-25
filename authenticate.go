@@ -79,12 +79,14 @@ func (a *Auth0Authenticate) Middleware() gin.HandlerFunc {
 		if err != nil {
 			c.Error(err)
 			c.AbortWithStatus(http.StatusUnauthorized)
+			return
 		}
 
 		claims := make(map[string]interface{})
 		if err := a.auth0Validator.Claims(c.Request, token, &claims); err != nil {
 			c.Error(err)
 			c.AbortWithStatus(http.StatusUnauthorized)
+			return
 		}
 
 		a.setKeys(c, claims)
