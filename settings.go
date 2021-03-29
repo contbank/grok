@@ -18,9 +18,10 @@ type Settings struct {
 
 // APISettings ...
 type APISettings struct {
-	Host    string   `yaml:"host"`
-	Swagger string   `yaml:"swagger"`
-	Auth    *APIAuth `yaml:"auth"`
+	Host        string   `yaml:"host"`
+	Swagger     string   `yaml:"swagger"`
+	Auth        *APIAuth `yaml:"auth"`
+	MaxBodySize int64    `yaml:"max_body_size"`
 }
 
 // MongoSettings ...
