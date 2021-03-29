@@ -15,7 +15,7 @@ func SetMaxBodyBytesMiddleware(maxMegaBytes int64) gin.HandlerFunc {
 			maxMBytes = 1
 		}
 
-		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxMegaBytes<<20)
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxMBytes<<20)
 
 		_, err := ioutil.ReadAll(c.Request.Body)
 
