@@ -77,6 +77,7 @@ func New(opts ...APIOption) *API {
 
 	server.Engine = gin.New()
 	server.Engine.Use(gin.Recovery())
+	server.Engine.Use(SetMaxBodyBytesMiddleware(server.settings.API.MaxBodySize))
 	server.Engine.Use(LogMiddleware())
 
 	if server.cors {
@@ -102,6 +103,18 @@ func New(opts ...APIOption) *API {
 	}
 
 	return server
+}
+
+// SetMaxBodyBytesMiddleware ...
+func SetMaxBodyBytesMiddleware(maxMegaBytes int64) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		maxMBytes := maxMegaBytes
+		if maxMBytes == 0 {
+			maxMBytes = 1
+		}
+
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxMegaBytes<<20)
+	}
 }
 
 // Run starts the server.
