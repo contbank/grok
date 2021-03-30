@@ -21,32 +21,38 @@ func NewMessageBrokerProducer(s *session.Session) *MessageBrokerProducer {
 }
 
 // Publish ...
-func (p *MessageBrokerProducer) Publish(topicID string, data interface{}) error {
-	return p.PublishWihAttribrutes(topicID, data, nil)
+func (p *MessageBrokerProducer) Publish(topicID string, data interface{}) (string, error) {
+	messageId, err := p.PublishWihAttribrutes(topicID, data, nil)
+	return messageId, err
 }
 
 // PublishWihAttribrutes ...
-func (p *MessageBrokerProducer) PublishWihAttribrutes(topicID string, data interface{}, attributes map[string]string) error {
+func (p *MessageBrokerProducer) PublishWihAttribrutes(topicID string, data interface{}, attributes map[string]string) (string, error) {
 	body, err := json.Marshal(data)
 
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	topic, err := createTopicIfNotExists(p.snsSvc, topicID)
 
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	message := string(body)
 
-	_, err = p.snsSvc.Publish(&sns.PublishInput{
+	output, err := p.snsSvc.Publish(&sns.PublishInput{
 		Message:  &message,
 		TopicArn: topic,
 	})
 
-	return err
+	if err != nil {
+		return "", err
+	}
+
+	return *output.MessageId, nil
+
 }
 
 func createTopicIfNotExists(snsSvc *sns.SNS, id string) (*string, error) {

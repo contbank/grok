@@ -67,13 +67,14 @@ func (s *MessageBrokerSubscriberTestSuite) TestSubscribe() {
 
 	time.Sleep(time.Second * 3)
 
-	err := s.producer.Publish(topicID, message)
+	messageId, err := s.producer.Publish(topicID, message)
 
 	if err != nil {
 		received <- true
 	}
 
 	s.assert.NoError(err)
+	s.assert.NotNil(messageId)
 
 	<-received
 }
