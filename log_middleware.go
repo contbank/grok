@@ -35,6 +35,8 @@ func LogMiddleware() gin.HandlerFunc {
 		blw.Header().Set("Request-Id", requestID.String())
 		c.Writer = blw
 
+		c.Set("Request-Id", requestID.String())
+
 		now := time.Now()
 		req := request(c)
 
