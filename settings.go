@@ -37,7 +37,7 @@ type AWSSettings struct {
 	SQS *AWSCredentials `yaml:"sqs"`
 	IAM *AWSCredentials `yaml:"iam"`
 	S3  *AWSCredentials `yaml:"s3"`
-	KMS *AWSCredentials `yaml:"ksm"`
+	KMS *AWSCredentials `yaml:"kms"`
 }
 
 //AWSCredentials ...
