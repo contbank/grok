@@ -37,7 +37,7 @@ type AWSSettings struct {
 	SQS *AWSCredentials `yaml:"sqs"`
 	IAM *AWSCredentials `yaml:"iam"`
 	S3  *AWSCredentials `yaml:"s3"`
-	KMS *AWSCredentials `yaml:"kms"`
+	KMS *KMSCredentials `yaml:"kms"`
 }
 
 //AWSCredentials ...
@@ -46,6 +46,11 @@ type AWSCredentials struct {
 	Fake     bool   `yaml:"fake"`
 	Endpoint string `yaml:"endpoint"`
 	Region   string `yaml:"region"`
+}
+
+type KMSCredentials struct {
+	AWSCredentials
+	Key string `yaml:"key"`
 }
 
 // APIAuth ...
