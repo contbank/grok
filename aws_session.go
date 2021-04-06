@@ -20,3 +20,13 @@ func CreateSession(settings *AWSCredentials) *session.Session {
 		return sess
 	}
 }
+
+// CreateKMSSession ...
+func CreateKMSSession(settings *KMSCredentials) *session.Session {
+	return CreateSession(&AWSCredentials{
+		Fake:     settings.Fake,
+		Path:     settings.Path,
+		Endpoint: settings.Endpoint,
+		Region:   settings.Region,
+	})
+}
