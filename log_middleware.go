@@ -11,6 +11,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
 )
 
 type bodyLogWriter struct {
@@ -24,7 +26,7 @@ func (w *bodyLogWriter) Write(b []byte) (int, error) {
 }
 
 //LogMiddleware ...
-func LogMiddleware() gin.HandlerFunc {
+func LogMiddleware(restricteds []string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer recovery(c)
 		defer c.Request.Body.Close()
@@ -38,7 +40,7 @@ func LogMiddleware() gin.HandlerFunc {
 		c.Set("Request-Id", requestID.String())
 
 		now := time.Now()
-		req := request(c)
+		req := request(c, restricteds)
 
 		c.Next()
 
@@ -51,7 +53,7 @@ func LogMiddleware() gin.HandlerFunc {
 		fields["ip"] = c.ClientIP()
 		fields["latency"] = elapsed.Seconds()
 		fields["request_id"] = requestID.String()
-		fields["response"] = response(blw)
+		fields["response"] = response(blw, restricteds)
 
 		logrus.WithFields(fields).Infof(
 			"Request incoming from %s elapsed %s completed with %d",
@@ -62,7 +64,7 @@ func LogMiddleware() gin.HandlerFunc {
 	}
 }
 
-func request(context *gin.Context) interface{} {
+func request(context *gin.Context, restricteds []string) interface{} {
 	r := make(map[string]interface{})
 
 	bodyCopy := new(bytes.Buffer)
@@ -72,7 +74,7 @@ func request(context *gin.Context) interface{} {
 	var body map[string]interface{}
 	json.Unmarshal(bodyData, &body)
 
-	r["body"] = body
+	r["body"] = restricted(body, restricteds)
 	r["host"] = context.Request.Host
 	r["form"] = context.Request.Form
 	r["path"] = context.Request.URL.Path
@@ -88,13 +90,13 @@ func request(context *gin.Context) interface{} {
 	return r
 }
 
-func response(writer *bodyLogWriter) interface{} {
+func response(writer *bodyLogWriter, restricteds []string) interface{} {
 	r := make(map[string]interface{})
 
 	var body map[string]interface{}
 	json.Unmarshal(writer.body.Bytes(), &body)
 
-	r["body"] = body
+	r["body"] = restricted(body, restricteds)
 	r["status"] = writer.Status()
 	r["headers"] = writer.Header()
 
@@ -107,4 +109,32 @@ func recovery(c *gin.Context) {
 		internalServerError := NewError(http.StatusInternalServerError, "internal server error")
 		c.AbortWithStatusJSON(http.StatusInternalServerError, internalServerError)
 	}
+}
+
+func restricted(v interface{}, restricteds []string) interface{} {
+	str := marshal(v)
+
+	for _, restricted := range restricteds {
+		result := gjson.Get(str, restricted)
+
+		if result.Index <= 0 {
+			continue
+		}
+
+		str, _ = sjson.Set(str, restricted, "RESTRICTED")
+	}
+	return unmarshal(str)
+}
+
+func marshal(v interface{}) string {
+	b, _ := json.Marshal(v)
+	return string(b)
+}
+
+func unmarshal(str string) interface{} {
+	v := make(map[string]interface{})
+
+	json.Unmarshal([]byte(str), &v)
+
+	return v
 }

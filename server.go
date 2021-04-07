@@ -78,7 +78,13 @@ func New(opts ...APIOption) *API {
 	server.Engine = gin.New()
 	server.Engine.Use(gin.Recovery())
 	server.Engine.Use(SetMaxBodyBytesMiddleware(server.settings.API.MaxBodySize))
-	server.Engine.Use(LogMiddleware())
+
+	var restricteds []string
+	if server.settings.Log != nil {
+		restricteds = server.settings.Log.Restricteds
+	}
+
+	server.Engine.Use(LogMiddleware(restricteds))
 
 	if server.cors {
 		server.Engine.Use(CORS())

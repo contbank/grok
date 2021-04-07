@@ -3,6 +3,7 @@ package grok_test
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/contbank/grok"
@@ -43,6 +44,16 @@ func (s *APIControllerTestSuite) SetupTest() {
 
 func (s *APIControllerTestSuite) TestNotFound() {
 	req := httptest.NewRequest("GET", "/notfound", nil)
+	response := httptest.NewRecorder()
+
+	s.server.Engine.ServeHTTP(response, req)
+
+	s.assert.Equal(http.StatusNotFound, response.Code)
+}
+
+func (s *APIControllerTestSuite) TestPostNotFound() {
+	reader := strings.NewReader("{\"secret\": \"A secret value\", \"test\": \"test\"}")
+	req := httptest.NewRequest("POST", "/notfound", reader)
 	response := httptest.NewRecorder()
 
 	s.server.Engine.ServeHTTP(response, req)

@@ -14,6 +14,7 @@ type Settings struct {
 	UserProvider *UserProvider  `yaml:"user_provider"`
 	Mail         *MailSettings  `yaml:"mail"`
 	AWS          *AWSSettings   `yaml:"aws"`
+	Log          *LogSettings   `yaml:"log"`
 }
 
 // APISettings ...
@@ -22,6 +23,11 @@ type APISettings struct {
 	Swagger     string   `yaml:"swagger"`
 	Auth        *APIAuth `yaml:"auth"`
 	MaxBodySize int64    `yaml:"max_body_size"`
+}
+
+// LogSettings ...
+type LogSettings struct {
+	Restricteds []string `yaml:"restricteds"`
 }
 
 // MongoSettings ...
