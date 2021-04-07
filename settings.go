@@ -55,11 +55,8 @@ type AWSCredentials struct {
 }
 
 type KMSCredentials struct {
-	Path     string `yaml:"path"`
-	Fake     bool   `yaml:"fake"`
-	Endpoint string `yaml:"endpoint"`
-	Region   string `yaml:"region"`
-	Key      string `yaml:"key"`
+	Aws AWSCredentials `yaml:",inline"`
+	Key string         `yaml:"key"`
 }
 
 // APIAuth ...
