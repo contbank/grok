@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 )
 
 func random(n float64) float64 {
@@ -97,4 +98,49 @@ func GeneratorIDBase(n int) string {
 		b[i] = letterBytes[rand.Intn(len(letterBytes))]
 	}
 	return strings.ToUpper(string(b))
+}
+
+func OnlyDigits(value string) string {
+
+	var newValue string
+
+	for _, c := range value {
+		if unicode.IsDigit(c) {
+			newValue += string(c)
+		}
+	}
+
+	return newValue
+}
+
+func IsOnlyDigits(value string) bool {
+	for _, c := range value {
+		if !unicode.IsDigit(c) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func MaskEmail(value string) string {
+	separator := "@"
+	parts := strings.Split(value, separator)
+	mask := strings.Repeat("*", len(parts[0]))
+
+	if !strings.Contains(value, separator) {
+		return mask
+	}
+
+	domain := parts[1]
+
+	return mask + separator + domain
+}
+
+func MaskCellphone(value string) string {
+	ddd := value[:2]
+	mask := strings.Repeat("*", 5)
+	rest := value[7:]
+
+	return ddd + mask + rest
 }

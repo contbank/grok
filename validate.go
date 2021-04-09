@@ -2,6 +2,7 @@ package grok
 
 import (
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/Nhanderu/brdoc"
@@ -24,6 +25,8 @@ func NewValidator() *validator.Validate {
 	validate.RegisterValidation("cnpj", CNPJ)
 	validate.RegisterValidation("cpf", CPF)
 	validate.RegisterValidation("cnpjcpf", CNPJCPF)
+	validate.RegisterValidation("phone", Phone(false))
+	validate.RegisterValidation("cellphone", Phone(true))
 
 	return validate
 }
@@ -90,4 +93,34 @@ func CNPJCPF(fl validator.FieldLevel) bool {
 	}
 
 	return result
+}
+
+func Phone(isCellphone bool) func(fl validator.FieldLevel) bool {
+	return func(fl validator.FieldLevel) bool {
+		field := fl.Field()
+
+		if field.Kind() != reflect.String {
+			return false
+		}
+
+		phone := field.String()
+
+		if !IsOnlyDigits(phone) {
+			return false
+		}
+
+		if (isCellphone && len(phone) != 11) || (!isCellphone && len(phone) != 10) {
+			return false
+		}
+
+		if isCellphone && phone[2] != '9' {
+			return false
+		}
+
+		if ddd, _ := strconv.Atoi(phone[:2]); ddd < 11 || ddd > 99 {
+			return false
+		}
+
+		return true
+	}
 }
