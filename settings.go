@@ -19,10 +19,11 @@ type Settings struct {
 
 // APISettings ...
 type APISettings struct {
-	Host        string   `yaml:"host"`
-	Swagger     string   `yaml:"swagger"`
-	Auth        *APIAuth `yaml:"auth"`
-	MaxBodySize int64    `yaml:"max_body_size"`
+	Host         string        `yaml:"host"`
+	Swagger      string        `yaml:"swagger"`
+	Auth         *APIAuth      `yaml:"auth"`
+	InternalAuth *InternalAuth `yaml:"internal_auth"`
+	MaxBodySize  int64         `yaml:"max_body_size"`
 }
 
 // LogSettings ...
@@ -66,6 +67,11 @@ type APIAuth struct {
 	Tenant     string       `yaml:"tenant"`
 	JWKS       string       `yaml:"jwks"`
 	Audience   []string     `yaml:"audience"`
+}
+
+// InternalAuth ...
+type InternalAuth struct {
+	URL string `yaml:"url"`
 }
 
 // FakeAPIAuth ...
