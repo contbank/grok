@@ -3,7 +3,6 @@ package grok
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -59,7 +58,7 @@ func NewInternalAuthorize(auth *InternalAuth) func(string) gin.HandlerFunc {
 
 			jwt := c.Request.Header.Get("authorization")
 			req.Header.Set("Content-Type", "application/json")
-			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", jwt))
+			req.Header.Set("Authorization", jwt)
 			req.Header.Set("X-Current-Identity", c.Request.Header.Get("X-Current-Identity"))
 
 			client := http.Client{}
