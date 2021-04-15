@@ -142,7 +142,7 @@ func RequiredHeaders(headers ...string) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		for _, c := range headers {
 			if content := ctx.GetHeader(c); content == "" {
-				ctx.AbortWithStatus(http.StatusBadRequest)
+				ctx.AbortWithStatus(http.StatusForbidden)
 				return
 			}
 		}
