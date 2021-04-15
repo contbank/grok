@@ -71,7 +71,9 @@ type APIAuth struct {
 
 // InternalAuth ...
 type InternalAuth struct {
-	URL string `yaml:"url"`
+	Fake    bool   `yaml:"fake"`
+	URL     string `yaml:"url"`
+	Success *bool  `yaml:"success"`
 }
 
 // FakeAPIAuth ...
