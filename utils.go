@@ -144,3 +144,22 @@ func MaskCellphone(value string) string {
 
 	return ddd + mask + rest
 }
+
+//GeneratorCellphone ...
+func GeneratorCellphone() string {
+	phoneString := ""
+	rand.Seed(time.Now().UTC().UnixNano())
+
+	dddArray := [3]int{ 11, 21, 51 }
+	ddd := dddArray[rand.Intn(2)]
+
+	phone := rand.Perm(8)
+
+	for _, c := range phone {
+		phoneString += strconv.Itoa(c)
+	}
+
+	phoneString = strconv.Itoa(ddd) + "9" + phoneString
+
+	return phoneString
+}
