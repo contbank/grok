@@ -44,6 +44,7 @@ type AWSSettings struct {
 	SQS *AWSCredentials `yaml:"sqs"`
 	IAM *AWSCredentials `yaml:"iam"`
 	S3  *AWSCredentials `yaml:"s3"`
+	SES *SESCredentials `yaml:"ses"`
 	KMS *KMSCredentials `yaml:"kms"`
 }
 
@@ -58,6 +59,11 @@ type AWSCredentials struct {
 type KMSCredentials struct {
 	Aws AWSCredentials `yaml:",inline"`
 	Key string         `yaml:"key"`
+}
+
+type SESCredentials struct {
+	Aws    AWSCredentials `yaml:",inline"`
+	Sender string         `yaml:"sender"`
 }
 
 // APIAuth ...
