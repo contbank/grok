@@ -54,3 +54,8 @@ func TestMaskCellphone(t *testing.T) {
 		assert.Equal(t, item.expected, result)
 	}
 }
+
+func TestGeneratorCellphone(t *testing.T) {
+	phone := grok.GeneratorCellphone()
+	assert.Equal(t, 11, len(phone))
+}
