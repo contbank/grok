@@ -57,6 +57,15 @@ func (mapping ErrorMapping) mappingMongoError(err error) error {
 		}
 	}
 
+	if exp, ok := err.(mongo.BulkWriteException); ok {
+		if len(exp.WriteErrors) > 0 {
+			if result, has := mapping[mongo.WriteError{Code: exp.WriteErrors[0].Code}]; has {
+				return result
+			}
+			return nil
+		}
+	}
+
 	if exp, ok := err.(mongo.CommandError); ok {
 		if result, has := mapping[mongo.WriteError{Code: int(exp.Code)}]; has {
 			return result
