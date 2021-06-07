@@ -16,8 +16,8 @@ type InternalTransactionalToken struct {
 	settings *TransactionalTokenSettings
 }
 
-// CreateAuthorize ...
-func CreateTransactionalPassword(settings *TransactionalTokenSettings) TransactionalToken {
+// CreateTransactionalToken ...
+func CreateTransactionalToken(settings *TransactionalTokenSettings) TransactionalToken {
 	if settings.Fake {
 		success := true
 		if settings.Success != nil {
