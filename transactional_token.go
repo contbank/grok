@@ -3,6 +3,7 @@ package grok
 import (
 	"bytes"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -81,11 +82,32 @@ func (a *InternalTransactionalToken) Validate() gin.HandlerFunc {
 
 		defer resp.Body.Close()
 
-		if resp.StatusCode != http.StatusOK {
-			c.AbortWithStatus(http.StatusForbidden)
+		if resp.StatusCode == http.StatusOK {
+			c.Next()
 			return
 		}
 
-		c.Next()
+		if resp.StatusCode == http.StatusConflict || resp.StatusCode == http.StatusBadRequest {
+
+			var response Error
+			body, err := ioutil.ReadAll(resp.Body)
+
+			if err != nil {
+				c.AbortWithStatus(http.StatusForbidden)
+				return
+			}
+
+			err = json.Unmarshal(body, &response)
+
+			if err != nil {
+				c.AbortWithStatus(http.StatusForbidden)
+				return
+			}
+
+			c.AbortWithStatusJSON(resp.StatusCode, response)
+			return
+		}
+
+		c.AbortWithStatus(http.StatusForbidden)
 	}
 }
