@@ -19,11 +19,12 @@ type Settings struct {
 
 // APISettings ...
 type APISettings struct {
-	Host         string        `yaml:"host"`
-	Swagger      string        `yaml:"swagger"`
-	Auth         *APIAuth      `yaml:"auth"`
-	InternalAuth *InternalAuth `yaml:"internal_auth"`
-	MaxBodySize  int64         `yaml:"max_body_size"`
+	Host                       string                      `yaml:"host"`
+	Swagger                    string                      `yaml:"swagger"`
+	Auth                       *APIAuth                    `yaml:"auth"`
+	InternalAuth               *InternalAuth               `yaml:"internal_auth"`
+	TransactionalTokenSettings *TransactionalTokenSettings `yaml:"internal_transactional_token"`
+	MaxBodySize                int64                       `yaml:"max_body_size"`
 }
 
 // LogSettings ...
@@ -77,6 +78,12 @@ type APIAuth struct {
 
 // InternalAuth ...
 type InternalAuth struct {
+	Fake    bool   `yaml:"fake"`
+	URL     string `yaml:"url"`
+	Success *bool  `yaml:"success"`
+}
+
+type TransactionalTokenSettings struct {
 	Fake    bool   `yaml:"fake"`
 	URL     string `yaml:"url"`
 	Success *bool  `yaml:"success"`
