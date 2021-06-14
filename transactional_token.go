@@ -38,15 +38,21 @@ func NewInternalTransactionalToken(settings *TransactionalTokenSettings) Transac
 
 func (a *InternalTransactionalToken) Validate() gin.HandlerFunc {
 	return func(c *gin.Context) {
+
+		defaultError := Error{
+			Code:     http.StatusBadRequest,
+			Messages: []string{"invalid password"},
+		}
+
 		if a.settings == nil {
-			c.AbortWithStatus(http.StatusForbidden)
+			c.AbortWithStatusJSON(http.StatusForbidden, defaultError)
 			return
 		}
 
 		token := c.Request.Header.Get("X-Transaction-Token")
 
 		if len(token) <= 0 {
-			c.AbortWithStatus(http.StatusForbidden)
+			c.AbortWithStatusJSON(http.StatusForbidden, defaultError)
 			return
 		}
 
@@ -58,13 +64,13 @@ func (a *InternalTransactionalToken) Validate() gin.HandlerFunc {
 
 		b, err := json.Marshal(payload)
 		if err != nil {
-			c.AbortWithStatus(http.StatusForbidden)
+			c.AbortWithStatusJSON(http.StatusForbidden, defaultError)
 			return
 		}
 
 		req, err := http.NewRequest("POST", a.settings.URL, bytes.NewReader(b))
 		if err != nil {
-			c.AbortWithStatus(http.StatusForbidden)
+			c.AbortWithStatusJSON(http.StatusForbidden, defaultError)
 			return
 		}
 
@@ -76,7 +82,7 @@ func (a *InternalTransactionalToken) Validate() gin.HandlerFunc {
 		resp, err := client.Do(req)
 
 		if err != nil {
-			c.AbortWithStatus(http.StatusForbidden)
+			c.AbortWithStatusJSON(http.StatusForbidden, defaultError)
 			return
 		}
 
@@ -93,14 +99,14 @@ func (a *InternalTransactionalToken) Validate() gin.HandlerFunc {
 			body, err := ioutil.ReadAll(resp.Body)
 
 			if err != nil {
-				c.AbortWithStatus(http.StatusForbidden)
+				c.AbortWithStatusJSON(http.StatusForbidden, defaultError)
 				return
 			}
 
 			err = json.Unmarshal(body, &response)
 
 			if err != nil {
-				c.AbortWithStatus(http.StatusForbidden)
+				c.AbortWithStatusJSON(http.StatusForbidden, defaultError)
 				return
 			}
 
@@ -108,6 +114,6 @@ func (a *InternalTransactionalToken) Validate() gin.HandlerFunc {
 			return
 		}
 
-		c.AbortWithStatus(http.StatusForbidden)
+		c.AbortWithStatusJSON(http.StatusForbidden, defaultError)
 	}
 }
