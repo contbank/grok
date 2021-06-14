@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"runtime/debug"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -105,7 +106,9 @@ func response(writer *bodyLogWriter, restricteds []string) interface{} {
 
 func recovery(c *gin.Context) {
 	if err := recover(); err != nil {
-		logrus.WithField("error", err).Error("Error on logging middleware")
+		logrus.WithField("error", err).
+			WithField("stack", string(debug.Stack())).
+			Error("Error on logging middleware")
 		internalServerError := NewError(http.StatusInternalServerError, "internal server error")
 		c.AbortWithStatusJSON(http.StatusInternalServerError, internalServerError)
 	}
