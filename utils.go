@@ -100,6 +100,21 @@ func GeneratorIDBase(n int) string {
 	return strings.ToUpper(string(b))
 }
 
+//OnlyLetters ...
+func OnlyLetters(value string) string {
+
+	var newValue string
+
+	for _, c := range value {
+		if unicode.IsLetter(c) {
+			newValue += string(c)
+		}
+	}
+
+	return newValue
+}
+
+//OnlyDigits ...
 func OnlyDigits(value string) string {
 
 	var newValue string
@@ -113,6 +128,7 @@ func OnlyDigits(value string) string {
 	return newValue
 }
 
+//IsOnlyDigits ...
 func IsOnlyDigits(value string) bool {
 	for _, c := range value {
 		if !unicode.IsDigit(c) {
@@ -123,6 +139,21 @@ func IsOnlyDigits(value string) bool {
 	return true
 }
 
+//OnlyLettersOrDigits ...
+func OnlyLettersOrDigits(value string) string {
+
+	var newValue string
+
+	for _, c := range value {
+		if unicode.IsLetter(c) || unicode.IsDigit(c) {
+			newValue += string(c)
+		}
+	}
+
+	return newValue
+}
+
+//MaskEmail ...
 func MaskEmail(value string) string {
 	separator := "@"
 	parts := strings.Split(value, separator)
@@ -137,6 +168,7 @@ func MaskEmail(value string) string {
 	return mask + separator + domain
 }
 
+//MaskCellphone ...
 func MaskCellphone(value string) string {
 	ddd := value[:2]
 	mask := strings.Repeat("*", 5)
@@ -150,7 +182,7 @@ func GeneratorCellphone() string {
 	phoneString := ""
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	dddArray := [3]int{ 11, 21, 51 }
+	dddArray := [3]int{11, 21, 51}
 	ddd := dddArray[rand.Intn(2)]
 
 	phone := rand.Perm(8)
