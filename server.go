@@ -66,6 +66,10 @@ func WithHealthz(h gin.HandlerFunc) APIOption {
 	}
 }
 
+var defaultRestricteds = []string{
+	TransactionTokenHeader,
+}
+
 // New creates a new API server
 func New(opts ...APIOption) *API {
 	server := &API{}
@@ -79,9 +83,9 @@ func New(opts ...APIOption) *API {
 	server.Engine.Use(gin.Recovery())
 	server.Engine.Use(SetMaxBodyBytesMiddleware(server.settings.API.MaxBodySize))
 
-	var restricteds []string
+	restricteds := defaultRestricteds
 	if server.settings.Log != nil {
-		restricteds = server.settings.Log.Restricteds
+		restricteds = append(restricteds, server.settings.Log.Restricteds...)
 	}
 
 	server.Engine.Use(LogMiddleware(restricteds))
