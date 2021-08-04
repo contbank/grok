@@ -9,6 +9,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const (
+	//TransactionTokenHeader ...
+	TransactionTokenHeader = "X-Transaction-Token"
+)
+
 type TransactionalToken interface {
 	Validate() gin.HandlerFunc
 }
@@ -49,7 +54,7 @@ func (a *InternalTransactionalToken) Validate() gin.HandlerFunc {
 			return
 		}
 
-		token := c.Request.Header.Get("X-Transaction-Token")
+		token := c.Request.Header.Get(TransactionTokenHeader)
 
 		if len(token) <= 0 {
 			c.AbortWithStatusJSON(http.StatusForbidden, defaultError)

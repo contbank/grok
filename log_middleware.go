@@ -80,7 +80,7 @@ func request(context *gin.Context, restricteds []string) interface{} {
 	r["form"] = context.Request.Form
 	r["path"] = context.Request.URL.Path
 	r["method"] = context.Request.Method
-	r["headers"] = context.Request.Header
+	r["headers"] = restricted(context.Request.Header, restricteds)
 	r["url"] = context.Request.URL.String()
 	r["post_form"] = context.Request.PostForm
 	r["remote_addr"] = context.Request.RemoteAddr
