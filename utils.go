@@ -139,6 +139,17 @@ func IsOnlyDigits(value string) bool {
 	return true
 }
 
+// HasDigit ...
+func HasDigit(value string) bool {
+	for _, c := range value {
+		if unicode.IsDigit(c) {
+			return true
+		}
+	}
+
+	return false
+}
+
 //OnlyLettersOrDigits ...
 func OnlyLettersOrDigits(value string) string {
 

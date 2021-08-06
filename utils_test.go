@@ -58,6 +58,25 @@ func TestOnlyLettersOrDigits(t *testing.T) {
 	}
 }
 
+func TestHasDigit(t *testing.T) {
+	var items = []struct {
+		input    string
+		expected bool
+	}{
+		{"1234567890qwertyuiop", true},
+		{"(11) 99999-9999", true},
+		{"$#@1%^&*(A)21$", true},
+		{"C4rro", true},
+		{"@xpto#", false},
+		{"teste", false},
+	}
+
+	for _, item := range items {
+		result := grok.HasDigit(item.input)
+		assert.Equal(t, item.expected, result)
+	}
+}
+
 func TestMaskEmail(t *testing.T) {
 	var items = []struct {
 		input    string
