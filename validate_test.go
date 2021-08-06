@@ -1,6 +1,7 @@
 package grok_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/contbank/grok"
@@ -74,5 +75,30 @@ func TestCellphoneInvalid(t *testing.T) {
 	for _, phone := range invalidCellphones {
 		err := validate.Var(phone, "cellphone")
 		assert.Error(t, err)
+	}
+}
+
+func TestFullName(t *testing.T) {
+	var names = []struct {
+		input    string
+		expected bool
+	}{
+		{"João da Silva", true},
+		{"Matheus Santos", true},
+		{"Maria Souza", true},
+		{"Ana Maria", true},
+
+		{"A B C", false},
+		{"     ", false},
+		{"Br a sil", false},
+		{"M4ria da S1lva", false},
+		{"Marcos Santos2", false},
+	}
+
+	validate := grok.NewValidator()
+
+	for _, item := range names {
+		err := validate.Var(item.input, "fullname")
+		assert.Equal(t, item.expected, err == nil, fmt.Sprintf("provided name: %s", item.input))
 	}
 }
