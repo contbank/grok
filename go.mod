@@ -20,10 +20,11 @@ require (
 	github.com/stretchr/testify v1.6.1
 	github.com/tidwall/gjson v1.7.4
 	github.com/tidwall/sjson v1.1.6
-	go.mongodb.org/mongo-driver v1.7.1
+	go.mongodb.org/mongo-driver v1.4.2
 	golang.org/x/net v0.0.0-20200904194848-62affa334b73 // indirect
 	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43 // indirect
 	golang.org/x/sys v0.0.0-20200905004654-be1d3432aa8f // indirect
+	golang.org/x/text v0.3.5 // indirect
 	gopkg.in/auth0.v3 v3.3.1
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22
 	gopkg.in/square/go-jose.v2 v2.5.1
