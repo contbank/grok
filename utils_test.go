@@ -120,8 +120,9 @@ func TestRemoveSpecialCharacters(t *testing.T) {
 	}{
 		{"Remoção de acentuação", "Remocao de acentuacao"},
 		{"Remoção de acentuação e exclamação!", "Remocao de acentuacao e exclamacao"},
+		{"áàéèúùâêíóò", "aaeeuuaeioo"},
 		{"(11) 99999-9999", "11 999999999"},
-		{"$#@1%^&*(A)21$", "1A21"},
+		{"$#@1%^&*(A)21$#", "1A21"},
 		{"@xpto#", "xpto"},
 	}
 
