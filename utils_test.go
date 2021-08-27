@@ -112,3 +112,21 @@ func TestGeneratorCellphone(t *testing.T) {
 	phone := grok.GeneratorCellphone()
 	assert.Equal(t, 11, len(phone))
 }
+
+func TestRemoveSpecialCharacters(t *testing.T) {
+	var items = []struct {
+		input    string
+		expected string
+	}{
+		{"Remoção de acentuação", "Remocao de acentuacao"},
+		{"Remoção de acentuação e exclamação!", "Remocao de acentuacao e exclamacao"},
+		{"(11) 99999-9999", "11 999999999"},
+		{"$#@1%^&*(A)21$", "1A21"},
+		{"@xpto#", "xpto"},
+	}
+
+	for _, item := range items {
+		result := grok.RemoveSpecialCharacters(item.input)
+		assert.Equal(t, item.expected, result)
+	}
+}
