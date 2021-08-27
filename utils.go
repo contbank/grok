@@ -2,6 +2,8 @@ package grok
 
 import (
 	"fmt"
+	"golang.org/x/text/transform"
+	"golang.org/x/text/unicode/norm"
 	"math"
 	"math/rand"
 	"strconv"
@@ -162,6 +164,26 @@ func OnlyLettersOrDigits(value string) string {
 	}
 
 	return newValue
+}
+
+func isMn(r rune) bool {
+	return unicode.Is(unicode.Mn, r) // Mn: nonspacing marks
+}
+
+//RemoveSpecialCharacters ...
+func RemoveSpecialCharacters(value string) string {
+	t := transform.Chain(norm.NFD, transform.RemoveFunc(isMn), norm.NFC)
+	newValue, _, _ := transform.String(t, value)
+
+	var result string
+
+	for _, c := range newValue {
+		if unicode.IsLetter(c) || unicode.IsDigit(c) || unicode.IsSpace(c) {
+			result += string(c)
+		}
+	}
+
+	return result
 }
 
 //MaskEmail ...
