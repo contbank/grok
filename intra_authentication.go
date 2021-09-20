@@ -122,7 +122,7 @@ func (a *IntraAuthentication) login(ctx context.Context, model IntraAuthenticati
 
 //Token ...
 func (a IntraAuthentication) Token(ctx context.Context, model IntraAuthenticationRequest) (string, error) {
-	if token, found := a.session.Cache.Get("access_token"); found {
+	if token, found := a.session.Cache.Get("intra_access_token"); found {
 		return token.(string), nil
 	}
 
@@ -132,8 +132,8 @@ func (a IntraAuthentication) Token(ctx context.Context, model IntraAuthenticatio
 		return "", err
 	}
 
-	a.session.Cache.Set("access_token", fmt.Sprintf("%s %s", response.TokenType, response.AccessToken), time.Second*time.Duration(int64(response.ExpiresIn-10)))
-	ctx = context.WithValue(ctx, "access_token", response.AccessToken)
+	a.session.Cache.Set("intra_access_token", fmt.Sprintf("%s %s", response.TokenType, response.AccessToken), time.Second*time.Duration(int64(response.ExpiresIn-10)))
+	ctx = context.WithValue(ctx, "intra_access_token", response.AccessToken)
 
 	return fmt.Sprintf("%s %s", response.TokenType, response.AccessToken), nil
 }
