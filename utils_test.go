@@ -77,6 +77,38 @@ func TestHasDigit(t *testing.T) {
 	}
 }
 
+func TestMaskCPF(t *testing.T) {
+	var items = []struct {
+		input    string
+		expected string
+	}{
+		{"47526039856", "475******56"},
+		{"78764134040", "787******40"},
+		{"98760212063", "987******63"},
+	}
+
+	for _, item := range items {
+		result := grok.MaskCPF(item.input)
+		assert.Equal(t, item.expected, result)
+	}
+}
+
+func TestMaskCNPJ(t *testing.T) {
+	var items = []struct {
+		input    string
+		expected string
+	}{
+		{"79571729000178", "795*********78"},
+		{"30911104000119", "309*********19"},
+		{"18556347000180", "185*********80"},
+	}
+
+	for _, item := range items {
+		result := grok.MaskCNPJ(item.input)
+		assert.Equal(t, item.expected, result)
+	}
+}
+
 func TestMaskEmail(t *testing.T) {
 	var items = []struct {
 		input    string
