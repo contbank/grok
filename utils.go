@@ -187,6 +187,16 @@ func RemoveSpecialCharacters(value string) string {
 	return result
 }
 
+//MaskCPF ...
+func MaskCPF(value string) string {
+	return value[:3] + strings.Repeat("*", 6) + value[9:]
+}
+
+//MaskCNPJ ...
+func MaskCNPJ(value string) string {
+	return value[:3] + strings.Repeat("*", 9) + value[12:]
+}
+
 //MaskEmail ...
 func MaskEmail(value string) string {
 	separator := "@"
