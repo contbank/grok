@@ -116,6 +116,7 @@ func createSubscriptionIfNotExists(sqsSvc *sqs.SQS, snsSvc *sns.SNS, subscriberI
 	}
 
 	var queueURL *string
+	var queueDlqURL *string
 
 	for _, t := range listQueueResults.QueueUrls {
 		parts := strings.Split(*t, "/")
@@ -125,35 +126,45 @@ func createSubscriptionIfNotExists(sqsSvc *sqs.SQS, snsSvc *sns.SNS, subscriberI
 		}
 	}
 
-	if queueURL != nil {
-		return queueURL, nil
+	if queueURL == nil {
+		resp, err := sqsSvc.CreateQueue(&sqs.CreateQueueInput{
+			QueueName: aws.String(subscriberID),
+		})
+
+		if err != nil {
+			logrus.WithError(err).
+				Errorf("error creating queue %s", subscriberID)
+			return nil, err
+		}
+
+		queueURL = resp.QueueUrl
+
 	}
 
-	resp, err := sqsSvc.CreateQueue(&sqs.CreateQueueInput{
-		QueueName: aws.String(subscriberID),
-	})
-
-	if err != nil {
-		logrus.WithError(err).
-			Errorf("error creating queue %s", subscriberID)
-		return nil, err
+	for _, t := range listQueueResults.QueueUrls {
+		parts := strings.Split(*t, "/")
+		if strings.Compare(parts[4], fmt.Sprintf("%s_dlq", subscriberID)) == 0 {
+			queueDlqURL = t
+			break
+		}
 	}
 
-	queueURL = resp.QueueUrl
+	if queueDlqURL == nil {
+		respdlq, err := sqsSvc.CreateQueue(&sqs.CreateQueueInput{
+			QueueName: aws.String(fmt.Sprintf("%s_dlq", subscriberID)),
+		})
+
+		if err != nil {
+			logrus.WithError(err).
+				Errorf("error creating queue dlq %s", subscriberID)
+			return nil, err
+		}
+
+		queueDlqURL = respdlq.QueueUrl
+	}
+
 	queueARN := convertQueueURLToARN(*queueURL)
-
-	respdlq, err := sqsSvc.CreateQueue(&sqs.CreateQueueInput{
-		QueueName: aws.String(fmt.Sprintf("%s_dlq", subscriberID)),
-	})
-
-	if err != nil {
-		logrus.WithError(err).
-			Errorf("error creating queue dlq %s", subscriberID)
-		return nil, err
-	}
-
-	dlqURL := respdlq.QueueUrl
-	dlqARN := convertQueueURLToARN(*dlqURL)
+	queueDlqARN := convertQueueURLToARN(*queueDlqURL)
 
 	topicArn, err := createTopicIfNotExists(snsSvc, topicID)
 
@@ -178,7 +189,7 @@ func createSubscriptionIfNotExists(sqsSvc *sqs.SQS, snsSvc *sns.SNS, subscriberI
 	policyContent := "{\"Version\": \"2012-10-17\",  \"Id\": \"" + queueARN + "/SQSDefaultPolicy\",  \"Statement\": [    {     \"Sid\": \"Sid1580665629194\",      \"Effect\": \"Allow\",      \"Principal\": {        \"AWS\": \"*\"      },      \"Action\": \"SQS:SendMessage\",      \"Resource\": \"" + queueARN + "\",      \"Condition\": {        \"ArnEquals\": {         \"aws:SourceArn\": \"" + *topicArn + "\"        }      }    }  ]}"
 
 	policy := map[string]string{
-		"deadLetterTargetArn": dlqARN,
+		"deadLetterTargetArn": queueDlqARN,
 		"maxReceiveCount":     strconv.Itoa(maxRetries),
 	}
 
