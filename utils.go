@@ -2,14 +2,15 @@ package grok
 
 import (
 	"fmt"
-	"golang.org/x/text/transform"
-	"golang.org/x/text/unicode/norm"
 	"math"
 	"math/rand"
 	"strconv"
 	"strings"
 	"time"
 	"unicode"
+
+	"golang.org/x/text/transform"
+	"golang.org/x/text/unicode/norm"
 )
 
 func random(n float64) float64 {
@@ -186,6 +187,16 @@ func RemoveSpecialCharacters(value string) string {
 	return result
 }
 
+//MaskCPF ...
+func MaskCPF(value string) string {
+	return value[:3] + strings.Repeat("*", 6) + value[9:]
+}
+
+//MaskCNPJ ...
+func MaskCNPJ(value string) string {
+	return value[:3] + strings.Repeat("*", 9) + value[12:]
+}
+
 //MaskEmail ...
 func MaskEmail(value string) string {
 	separator := "@"
@@ -215,7 +226,7 @@ func GeneratorCellphone() string {
 	phoneString := ""
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	var dddArray = []string {
+	var dddArray = []string{
 		"11", "12", "13", "14", "15", "16", "17", "18", "19",
 		"21", "22", "24", "27", "28", "31", "32", "33", "34",
 		"35", "37", "38", "41", "42", "43", "44", "45", "46",
@@ -234,4 +245,9 @@ func GeneratorCellphone() string {
 	phoneString = dddArray[rand.Intn(2)] + "9" + phoneString
 
 	return phoneString
+}
+
+// String returns a pointer to the string value passed in.
+func String(v string) *string {
+	return &v
 }

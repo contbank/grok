@@ -87,10 +87,11 @@ func TestFullName(t *testing.T) {
 		{"Matheus Santos", true},
 		{"Maria Souza", true},
 		{"Ana Maria", true},
+		{"manuella melo e cysne", true},
+		{"Br a sil", true},
+		{"A B C", true},
 
-		{"A B C", false},
 		{"     ", false},
-		{"Br a sil", false},
 		{"M4ria da S1lva", false},
 		{"Marcos Santos2", false},
 	}

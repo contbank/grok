@@ -170,7 +170,7 @@ func FullName(fl validator.FieldLevel) bool {
 		}
 
 		for _, p := range parts {
-			if len(p) < 2 || HasDigit(p) {
+			if len(p) < 1 || HasDigit(p) {
 				return false
 			}
 		}
