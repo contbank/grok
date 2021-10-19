@@ -27,6 +27,7 @@ func NewValidator() *validator.Validate {
 	validate.RegisterValidation("cnpjcpf", CNPJCPF)
 	validate.RegisterValidation("phone", Phone(false))
 	validate.RegisterValidation("cellphone", Phone(true))
+	validate.RegisterValidation("phonecellphone", PhoneOrCellphone())
 	validate.RegisterValidation("fullname", FullName)
 
 	return validate
@@ -116,6 +117,34 @@ func Phone(isCellphone bool) func(fl validator.FieldLevel) bool {
 		}
 
 		if isCellphone && phone[2] != '9' {
+			return false
+		}
+
+		if ddd, _ := strconv.Atoi(phone[:2]); ddd < 11 || ddd > 99 {
+			return false
+		}
+
+		return true
+	}
+}
+
+// PhoneOrCellphone ...
+func PhoneOrCellphone() func(fl validator.FieldLevel) bool {
+	return func(fl validator.FieldLevel) bool {
+		field := fl.Field()
+
+		if field.Kind() != reflect.String {
+			return false
+		}
+
+		phone := field.String()
+		phone = OnlyDigits(phone)
+
+		if len(phone) != 11 && len(phone) != 10 {
+			return false
+		}
+
+		if (len(phone) == 11) && phone[2] != '9' {
 			return false
 		}
 
