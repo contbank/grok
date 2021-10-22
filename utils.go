@@ -93,6 +93,15 @@ func GeneratorCNPJ() string {
 	return resultado
 }
 
+// ShortenString ...
+func ShortenString(s string, i int) string {
+	runes := []rune(s)
+	if len(runes) > i {
+		return strings.TrimSpace(string(runes[:i]))
+	}
+	return s
+}
+
 //GeneratorIDBase ...
 func GeneratorIDBase(n int) string {
 	const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
