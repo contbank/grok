@@ -163,3 +163,21 @@ func TestRemoveSpecialCharacters(t *testing.T) {
 		assert.Equal(t, item.expected, result)
 	}
 }
+
+func TestShortenString(t *testing.T) {
+	var items = []struct {
+		input    string
+		length   int
+		expected string
+	}{
+		{"Endereco", 4, "Ende"},
+		{"Rua Teste", 4, "Rua"},
+		{"Rua Teste", 5, "Rua T"},
+		{" Rua Teste", 5, "Rua"},
+	}
+
+	for _, item := range items {
+		result := grok.ShortenString(item.input, item.length)
+		assert.Equal(t, item.expected, result)
+	}
+}
