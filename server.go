@@ -107,9 +107,11 @@ func New(opts ...APIOption) *API {
 		server.router.GET("/healthz", server.healthz)
 	}
 
-	doc := NewSwaggerDoc(server.settings.API.Swagger.FilePath)
-	swag.Register(swag.Name, doc)
-	server.router.GET(server.settings.API.Swagger.EndpointPath, ginSwagger.WrapHandler(swaggerFiles.Handler))
+	if server.settings.API.Swagger != nil {
+		doc := NewSwaggerDoc(server.settings.API.Swagger.FilePath)
+		swag.Register(swag.Name, doc)
+		server.router.GET(server.settings.API.Swagger.EndpointPath, ginSwagger.WrapHandler(swaggerFiles.Handler))
+	}
 
 	server.router.Use(server.handlers...)
 
