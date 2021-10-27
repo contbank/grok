@@ -1,32 +1,45 @@
 package grok
 
 import (
-	"io/ioutil"
-	"net/http"
+	"bytes"
+	"io"
 	"os"
-
-	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
 )
 
-// Swagger ...
-func Swagger(file string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		file, err := os.Open(file)
+var (
+	swagger string
+)
 
-		if err != nil {
-			logrus.WithError(err).
-				Error("swagger file error")
+//SwaggerDoc ...
+type SwaggerDoc struct {
+	Path string
+}
 
-			c.AbortWithStatus(http.StatusNotFound)
-			return
-		}
-
-		defer file.Close()
-
-		content, _ := ioutil.ReadAll(file)
-
-		c.Writer.Write(content)
-		c.Writer.Header().Set("content-type", "application/json")
+//NewSwaggerDoc ...
+func NewSwaggerDoc(path string) *SwaggerDoc {
+	return &SwaggerDoc{
+		Path: path,
 	}
+}
+
+//ReadDoc ...
+func (s *SwaggerDoc) ReadDoc() string {
+	if swagger != "" {
+		return swagger
+	}
+
+	buf := bytes.NewBuffer(nil)
+
+	f, err := os.Open(s.Path)
+
+	if err != nil {
+		panic(err)
+	}
+
+	io.Copy(buf, f)
+	f.Close()
+
+	swagger = string(buf.Bytes())
+
+	return swagger
 }

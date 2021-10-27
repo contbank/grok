@@ -9,6 +9,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
+	ginSwagger "github.com/swaggo/gin-swagger"
+	"github.com/swaggo/gin-swagger/swaggerFiles"
+	"github.com/swaggo/swag"
 )
 
 // API wraps API configurations.
@@ -104,7 +107,9 @@ func New(opts ...APIOption) *API {
 		server.router.GET("/healthz", server.healthz)
 	}
 
-	server.router.GET("/swagger", Swagger(server.settings.API.Swagger))
+	doc := NewSwaggerDoc(server.settings.API.Swagger.FilePath)
+	swag.Register(swag.Name, doc)
+	server.router.GET(server.settings.API.Swagger.EndpointPath, ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	server.router.Use(server.handlers...)
 

@@ -17,16 +17,16 @@ require (
 	github.com/sendgrid/sendgrid-go v3.7.0+incompatible
 	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/cobra v1.1.1
-	github.com/stretchr/testify v1.6.1
+	github.com/stretchr/testify v1.7.0
+	github.com/swaggo/gin-swagger v1.3.2
+	github.com/swaggo/swag v1.7.4
 	github.com/tidwall/gjson v1.7.4
 	github.com/tidwall/sjson v1.1.6
 	go.mongodb.org/mongo-driver v1.4.2
-	golang.org/x/net v0.0.0-20200904194848-62affa334b73 // indirect
 	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43 // indirect
-	golang.org/x/sys v0.0.0-20200905004654-be1d3432aa8f // indirect
 	golang.org/x/text v0.3.7
 	gopkg.in/auth0.v3 v3.3.1
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22
 	gopkg.in/square/go-jose.v2 v2.5.1
-	gopkg.in/yaml.v2 v2.3.0
+	gopkg.in/yaml.v2 v2.4.0
 )

@@ -20,11 +20,16 @@ type Settings struct {
 // APISettings ...
 type APISettings struct {
 	Host                       string                      `yaml:"host"`
-	Swagger                    string                      `yaml:"swagger"`
+	Swagger                    *Swagger                    `yaml:"swagger"`
 	Auth                       *APIAuth                    `yaml:"auth"`
 	InternalAuth               *InternalAuth               `yaml:"internal_auth"`
 	TransactionalTokenSettings *TransactionalTokenSettings `yaml:"internal_transactional_token"`
 	MaxBodySize                int64                       `yaml:"max_body_size"`
+}
+
+type Swagger struct {
+	FilePath     string `yaml:"file_path"`
+	EndpointPath string `yaml:"endpoint_path"`
 }
 
 // LogSettings ...
