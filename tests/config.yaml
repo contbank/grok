@@ -6,6 +6,8 @@ api:
 mongo:
   connection_string: mongodb://localhost:27017
   database: grok
+redis:
+  connection_string: localhost:6379
 aws:
   sns:
     fake: true

@@ -33,6 +33,19 @@ func WithMongo() HealtzOption {
 	}
 }
 
+// WithRedis ...
+func WithRedis() HealtzOption {
+	return func(h *Healthz) {
+		h.checks = append(h.checks, func(healthz *Healthz) error {
+			client := NewRedisConnection(h.settings.Redis.ConnectionString)
+			defer client.Close()
+
+			_, err := client.Ping(context.Background()).Result()
+			return err
+		})
+	}
+}
+
 // WithHealthzSettings ...
 func WithHealthzSettings(s *Settings) HealtzOption {
 	return func(h *Healthz) {

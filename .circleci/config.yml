@@ -17,6 +17,7 @@ jobs:
         AWS_ACCESS_KEY_ID: clienteid
         AWS_SECRET_ACCESS_KEY: clientsecret
     - image: mongo
+    - image: redis
     - image: localstack/localstack
       environment:
         DEBUG: 1

@@ -11,6 +11,7 @@ import (
 type Settings struct {
 	API          *APISettings   `yaml:"api"`
 	Mongo        *MongoSettings `yaml:"mongo"`
+	Redis        *RedisSettings `yaml:"redis"`
 	UserProvider *UserProvider  `yaml:"user_provider"`
 	Mail         *MailSettings  `yaml:"mail"`
 	AWS          *AWSSettings   `yaml:"aws"`
@@ -42,6 +43,10 @@ type MongoSettings struct {
 	CaFilePath       *string `yaml:"ca_file_path"`
 	ConnectionString string  `yaml:"connection_string"`
 	Database         string  `yaml:"database"`
+}
+
+type RedisSettings struct {
+	ConnectionString string `yaml:"connection_string"`
 }
 
 // AWSSettings ...

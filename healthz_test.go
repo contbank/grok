@@ -14,6 +14,7 @@ func TestHealthz(t *testing.T) {
 	t.Run("Mongo Success", func(t *testing.T) {
 		healthz := grok.NewHealthz(
 			grok.WithMongo(),
+			grok.WithRedis(),
 			grok.WithHealthzSettings(settings))
 
 		err := healthz.Healthz()
