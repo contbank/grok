@@ -1,8 +1,6 @@
 api:
   host: :9000
-  swagger: 
-    file_path: tests/swagger.json
-    endpoint_path: /swagger/grok
+  swagger: tests/swagger.json
 mongo:
   connection_string: mongodb://localhost:27017
   database: grok
