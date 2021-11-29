@@ -129,6 +129,9 @@ func createSubscriptionIfNotExists(sqsSvc *sqs.SQS, snsSvc *sns.SNS, subscriberI
 	if queueURL == nil {
 		resp, err := sqsSvc.CreateQueue(&sqs.CreateQueueInput{
 			QueueName: aws.String(subscriberID),
+			Attributes: map[string]*string{
+				sqs.QueueAttributeNameReceiveMessageWaitTimeSeconds: aws.String("20"),
+			},
 		})
 
 		if err != nil {
@@ -152,6 +155,9 @@ func createSubscriptionIfNotExists(sqsSvc *sqs.SQS, snsSvc *sns.SNS, subscriberI
 	if queueDlqURL == nil {
 		respdlq, err := sqsSvc.CreateQueue(&sqs.CreateQueueInput{
 			QueueName: aws.String(fmt.Sprintf("%s_dlq", subscriberID)),
+			Attributes: map[string]*string{
+				sqs.QueueAttributeNameReceiveMessageWaitTimeSeconds: aws.String("20"),
+			},
 		})
 
 		if err != nil {
@@ -204,8 +210,9 @@ func createSubscriptionIfNotExists(sqsSvc *sqs.SQS, snsSvc *sns.SNS, subscriberI
 	setQueueAttrInput := sqs.SetQueueAttributesInput{
 		QueueUrl: queueURL,
 		Attributes: map[string]*string{
-			sqs.QueueAttributeNamePolicy:        aws.String(policyContent),
-			sqs.QueueAttributeNameRedrivePolicy: aws.String(string(redrivePolicyContent)),
+			sqs.QueueAttributeNamePolicy:                        aws.String(policyContent),
+			sqs.QueueAttributeNameRedrivePolicy:                 aws.String(string(redrivePolicyContent)),
+			sqs.QueueAttributeNameReceiveMessageWaitTimeSeconds: aws.String("20"),
 		},
 	}
 
