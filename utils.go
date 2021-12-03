@@ -260,3 +260,21 @@ func GeneratorCellphone() string {
 func String(v string) *string {
 	return &v
 }
+
+// ToTitle ...
+func ToTitle(value string) string {
+	return strings.ToTitle(strings.ToLower(value))
+}
+
+// GeneratorDigitableLine ...
+func GeneratorDigitableLine() string {
+	digitableString := ""
+	rand.Seed(time.Now().UTC().UnixNano())
+
+	digitable := rand.Perm(24)
+	for _, c := range digitable {
+		digitableString += strconv.Itoa(c)
+	}
+
+	return OnlyDigits(digitableString)
+}
