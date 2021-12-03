@@ -145,6 +145,10 @@ func TestGeneratorCellphone(t *testing.T) {
 	assert.Equal(t, 11, len(phone))
 }
 
+func TestGeneratorDigitableLine(t *testing.T) {
+	assert.Greater(t, len(grok.GeneratorDigitableLine()), 0)
+}
+
 func TestRemoveSpecialCharacters(t *testing.T) {
 	var items = []struct {
 		input    string
