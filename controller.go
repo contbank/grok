@@ -22,8 +22,8 @@ func BindingError(context *gin.Context, err error) {
 func ResolveError(context *gin.Context, err error) {
 	context.Error(err)
 
-	if DefaultErrorMapping.Exists(err) {
-		err = DefaultErrorMapping.Get(err)
+	if DefaultErrorMapping.Exists(err.Error()) {
+		err = DefaultErrorMapping.Get(err.Error())
 	}
 
 	if reflect.TypeOf(err) != reflect.TypeOf(&Error{}) {
