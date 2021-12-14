@@ -21,7 +21,7 @@ require (
 	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/cobra v1.1.1
 	github.com/stretchr/testify v1.7.0
-	github.com/tidwall/gjson v1.7.4
+	github.com/tidwall/gjson v1.12.1
 	github.com/tidwall/sjson v1.1.6
 	go.mongodb.org/mongo-driver v1.4.2
 	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43 // indirect
