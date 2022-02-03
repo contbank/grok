@@ -1,13 +1,12 @@
 package grok
 
 import (
-	"reflect"
-	"strconv"
-	"strings"
-
 	"github.com/Nhanderu/brdoc"
 	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"reflect"
+	"strconv"
+	"strings"
 )
 
 var (
@@ -156,7 +155,7 @@ func PhoneOrCellphone() func(fl validator.FieldLevel) bool {
 	}
 }
 
-//FullName ...
+// FullName ...
 func FullName(fl validator.FieldLevel) bool {
 	field := fl.Field()
 

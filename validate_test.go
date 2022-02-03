@@ -2,10 +2,9 @@ package grok_test
 
 import (
 	"fmt"
-	"testing"
-
 	"github.com/contbank/grok"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 var validPhones = []string{

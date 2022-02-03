@@ -24,6 +24,26 @@ func TestOnlyLetters(t *testing.T) {
 	}
 }
 
+func TestOnlyLettersOrSpaces(t *testing.T) {
+	var items = []struct {
+		input    string
+		expected string
+	}{
+		{"1234567890qwertyuiop", "qwertyuiop"},
+		{"1234567890qwert yuiop", "qwert yuiop"},
+		{"teste do espaço", "teste do espaço"},
+		{"teste de pontuação. no meio. da frase.", "teste de pontuação no meio da frase"},
+		{"(11) 99999-9999", " "},
+		{"$#@1%^&*(A)21$", "A"},
+		{"@xpto#", "xpto"},
+	}
+
+	for _, item := range items {
+		result := grok.OnlyLettersOrSpaces(item.input)
+		assert.Equal(t, item.expected, result)
+	}
+}
+
 func TestOnlyDigits(t *testing.T) {
 	var items = []struct {
 		input    string
