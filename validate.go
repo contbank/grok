@@ -28,7 +28,6 @@ func NewValidator() *validator.Validate {
 	validate.RegisterValidation("cellphone", Phone(true))
 	validate.RegisterValidation("phonecellphone", PhoneOrCellphone())
 	validate.RegisterValidation("fullname", FullName)
-	validate.RegisterValidation("validdatetime", ValidDatetime)
 
 	return validate
 }
@@ -179,12 +178,4 @@ func FullName(fl validator.FieldLevel) bool {
 	default:
 		return false
 	}
-}
-
-// ValidDatetime ...
-func ValidDatetime(fl validator.FieldLevel) bool {
-	if fl.Field().IsZero() {
-		return false
-	}
-	return true
 }

@@ -2,11 +2,9 @@ package grok_test
 
 import (
 	"fmt"
-	"testing"
-	"time"
-
 	"github.com/contbank/grok"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 var validPhones = []string{
@@ -101,24 +99,6 @@ func TestFullName(t *testing.T) {
 
 	for _, item := range names {
 		err := validate.Var(item.input, "fullname")
-		assert.Equal(t, item.expected, err == nil, fmt.Sprintf("provided name: %s", item.input))
-	}
-}
-
-func TestValidDatetime(t *testing.T) {
-	var dates = []struct {
-		input time.Time
-		expected bool
-	}{
-		{time.Date(2022, 2, 15, 0, 0, 0, 0, time.UTC), true},
-		{time.Date(2021, 10, 3, 0, 0, 0, 0, time.UTC), true},
-		{time.Date(1, 1, 1, 0, 0, 0, 0, time.UTC), false},
-	}
-
-	validate := grok.NewValidator()
-
-	for _, item := range dates {
-		err := validate.Var(item.input, "validdatetime")
 		assert.Equal(t, item.expected, err == nil, fmt.Sprintf("provided name: %s", item.input))
 	}
 }
