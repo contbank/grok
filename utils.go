@@ -24,7 +24,7 @@ func mod(dividendo float64, divisor float64) float64 {
 	return math.Round(dividendo - (math.Floor(dividendo/divisor) * divisor))
 }
 
-//GeneratorCPF ...
+// GeneratorCPF ...
 func GeneratorCPF() string {
 	cpfString := ""
 
@@ -54,7 +54,7 @@ func verify(data []int, n int) int {
 	return 11 - total
 }
 
-//GeneratorCNPJ ...
+// GeneratorCNPJ ...
 func GeneratorCNPJ() string {
 	var n float64
 	var n9 float64
@@ -102,7 +102,7 @@ func ShortenString(s string, i int) string {
 	return s
 }
 
-//GeneratorIDBase ...
+// GeneratorIDBase ...
 func GeneratorIDBase(n int) string {
 	const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
 	b := make([]byte, n)
@@ -112,9 +112,8 @@ func GeneratorIDBase(n int) string {
 	return strings.ToUpper(string(b))
 }
 
-//OnlyLetters ...
+// OnlyLetters ...
 func OnlyLetters(value string) string {
-
 	var newValue string
 
 	for _, c := range value {
@@ -126,7 +125,20 @@ func OnlyLetters(value string) string {
 	return newValue
 }
 
-//OnlyDigits ...
+// OnlyLettersOrSpaces ...
+func OnlyLettersOrSpaces(value string) string {
+	var newValue string
+
+	for _, c := range value {
+		if unicode.IsLetter(c) || unicode.IsSpace(c) {
+			newValue += string(c)
+		}
+	}
+
+	return newValue
+}
+
+// OnlyDigits ...
 func OnlyDigits(value string) string {
 
 	var newValue string
@@ -140,7 +152,7 @@ func OnlyDigits(value string) string {
 	return newValue
 }
 
-//IsOnlyDigits ...
+// IsOnlyDigits ...
 func IsOnlyDigits(value string) bool {
 	for _, c := range value {
 		if !unicode.IsDigit(c) {
@@ -162,7 +174,7 @@ func HasDigit(value string) bool {
 	return false
 }
 
-//OnlyLettersOrDigits ...
+// OnlyLettersOrDigits ...
 func OnlyLettersOrDigits(value string) string {
 
 	var newValue string
@@ -180,7 +192,7 @@ func isMn(r rune) bool {
 	return unicode.Is(unicode.Mn, r) // Mn: nonspacing marks
 }
 
-//RemoveSpecialCharacters ...
+// RemoveSpecialCharacters ...
 func RemoveSpecialCharacters(value string) string {
 	t := transform.Chain(norm.NFD, transform.RemoveFunc(isMn), norm.NFC)
 	newValue, _, _ := transform.String(t, value)
@@ -196,17 +208,17 @@ func RemoveSpecialCharacters(value string) string {
 	return result
 }
 
-//MaskCPF ...
+// MaskCPF ...
 func MaskCPF(value string) string {
 	return value[:3] + strings.Repeat("*", 6) + value[9:]
 }
 
-//MaskCNPJ ...
+// MaskCNPJ ...
 func MaskCNPJ(value string) string {
 	return value[:3] + strings.Repeat("*", 9) + value[12:]
 }
 
-//MaskEmail ...
+// MaskEmail ...
 func MaskEmail(value string) string {
 	separator := "@"
 	parts := strings.Split(value, separator)
@@ -221,7 +233,7 @@ func MaskEmail(value string) string {
 	return mask + separator + domain
 }
 
-//MaskCellphone ...
+// MaskCellphone ...
 func MaskCellphone(value string) string {
 	ddd := value[:2]
 	mask := strings.Repeat("*", 5)
@@ -230,7 +242,7 @@ func MaskCellphone(value string) string {
 	return ddd + mask + rest
 }
 
-//GeneratorCellphone ...
+// GeneratorCellphone ...
 func GeneratorCellphone() string {
 	phoneString := ""
 	rand.Seed(time.Now().UTC().UnixNano())
@@ -263,7 +275,7 @@ func String(v string) *string {
 
 // ToTitle ...
 func ToTitle(value string) string {
-	return strings.ToTitle(strings.ToLower(value))
+	return strings.TrimSpace(strings.ToTitle(strings.ToLower(value)))
 }
 
 // GeneratorDigitableLine ...

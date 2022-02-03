@@ -1,13 +1,12 @@
 package grok
 
 import (
-	"reflect"
-	"strconv"
-	"strings"
-
 	"github.com/Nhanderu/brdoc"
 	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"reflect"
+	"strconv"
+	"strings"
 )
 
 var (
@@ -29,6 +28,7 @@ func NewValidator() *validator.Validate {
 	validate.RegisterValidation("cellphone", Phone(true))
 	validate.RegisterValidation("phonecellphone", PhoneOrCellphone())
 	validate.RegisterValidation("fullname", FullName)
+	validate.RegisterValidation("validdatetime", ValidDatetime)
 
 	return validate
 }
@@ -156,7 +156,7 @@ func PhoneOrCellphone() func(fl validator.FieldLevel) bool {
 	}
 }
 
-//FullName ...
+// FullName ...
 func FullName(fl validator.FieldLevel) bool {
 	field := fl.Field()
 
@@ -179,4 +179,12 @@ func FullName(fl validator.FieldLevel) bool {
 	default:
 		return false
 	}
+}
+
+// ValidDatetime ...
+func ValidDatetime(fl validator.FieldLevel) bool {
+	if fl.Field().IsZero() {
+		return false
+	}
+	return true
 }
