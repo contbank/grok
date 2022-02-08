@@ -18,7 +18,7 @@ func (mapping ErrorMapping) Register(k string, v error) {
 // Get ...
 func (mapping ErrorMapping) Get(err string) error {
 	for key, result := range mapping {
-		if strings.Contains(strings.ToLower(key), strings.ToLower(err)) {
+		if strings.Contains(strings.ToLower(err), strings.ToLower(key)) {
 			return result
 		}
 	}
