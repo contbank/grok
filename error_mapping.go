@@ -1,5 +1,7 @@
 package grok
 
+import "strings"
+
 // ErrorMapping ...
 type ErrorMapping map[string]error
 
@@ -13,14 +15,12 @@ func (mapping ErrorMapping) Register(k string, v error) {
 	mapping[k] = v
 }
 
-// Exists ...
-func (mapping ErrorMapping) Exists(err string) bool {
-	_, has := mapping[err]
-
-	return has
-}
-
 // Get ...
 func (mapping ErrorMapping) Get(err string) error {
-	return mapping[err]
+	for key, result := range mapping {
+		if strings.Contains(strings.ToLower(key), strings.ToLower(err)) {
+			return result
+		}
+	}
+	return nil
 }
