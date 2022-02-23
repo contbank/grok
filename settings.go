@@ -61,6 +61,7 @@ type AWSCredentials struct {
 	Fake     bool   `yaml:"fake"`
 	Endpoint string `yaml:"endpoint"`
 	Region   string `yaml:"region"`
+	Profile  string `yaml:"profile"`
 }
 
 type KMSCredentials struct {
