@@ -2,6 +2,8 @@ package grok
 
 import (
 	"context"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"net/http"
 	"os"
 	"os/signal"
@@ -9,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
+	"github.com/swaggo/swag"
 )
 
 // API wraps API configurations.
@@ -21,7 +24,8 @@ type API struct {
 	healthz  gin.HandlerFunc
 	handlers []gin.HandlerFunc
 
-	Container Container
+	SwaggerSpec *swag.Spec
+	Container   Container
 }
 
 // APIOption wrapps all server configurations
@@ -66,6 +70,12 @@ func WithHealthz(h gin.HandlerFunc) APIOption {
 	}
 }
 
+func WithSwagger(spec *swag.Spec) APIOption {
+	return func(server *API) {
+		server.SwaggerSpec = spec
+	}
+}
+
 var defaultRestricteds = []string{
 	TransactionTokenHeader,
 }
@@ -104,8 +114,14 @@ func New(opts ...APIOption) *API {
 		server.router.GET("/healthz", server.healthz)
 	}
 
-	server.router.GET("/swagger", Swagger(server.settings.API.Swagger))
-
+	//server.router.GET("/swagger", Swagger(server.settings.API.Swagger))
+	if server.SwaggerSpec != nil {
+		logrus.Infof("Swagger at http://localhost%s/swagger/index.html", server.settings.API.Host)
+		//server.SwaggerSpec.BasePath = "/api/v1"
+		server.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	} else {
+		logrus.Info("No swagger")
+	}
 	server.router.Use(server.handlers...)
 
 	for _, ctrl := range server.Container.Controllers() {
