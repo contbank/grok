@@ -2,6 +2,7 @@ package grok
 
 import (
 	"context"
+	"fmt"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"net/http"
@@ -24,7 +25,7 @@ type API struct {
 	healthz  gin.HandlerFunc
 	handlers []gin.HandlerFunc
 
-	SwaggerSpec *swag.Spec
+	swagger *SwaggerSettings
 	Container   Container
 }
 
@@ -70,9 +71,12 @@ func WithHealthz(h gin.HandlerFunc) APIOption {
 	}
 }
 
-func WithSwagger(spec *swag.Spec) APIOption {
+func WithSwagger(spec *swag.Spec, path string) APIOption {
 	return func(server *API) {
-		server.SwaggerSpec = spec
+		server.swagger = &SwaggerSettings{
+			spec: spec,
+			path: path,
+		}
 	}
 }
 
@@ -115,10 +119,11 @@ func New(opts ...APIOption) *API {
 	}
 
 	//server.router.GET("/swagger", Swagger(server.settings.API.Swagger))
-	if server.SwaggerSpec != nil {
-		logrus.Infof("Swagger at http://localhost%s/swagger/index.html", server.settings.API.Host)
+	if server.swagger != nil {
 		//server.SwaggerSpec.BasePath = "/api/v1"
-		server.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+		swaggerPath := fmt.Sprintf("%s*any", server.swagger.path)
+		logrus.Infof("Swagger at http://localhost%s%sindex.html", server.settings.API.Host, server.swagger.path)
+		server.router.GET(swaggerPath, ginSwagger.WrapHandler(swaggerFiles.Handler))
 	} else {
 		logrus.Info("No swagger")
 	}
