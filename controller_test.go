@@ -39,6 +39,7 @@ func (s *APIControllerTestSuite) SetupTest() {
 	grok.FromYAML("tests/config.yaml", s.settings)
 	s.server = grok.New(
 		grok.WithSettings(s.settings),
+		grok.WithSwagger(TestSwaggerSpec, "/custom/swagger/"),
 		grok.WithContainer(container))
 }
 
@@ -62,7 +63,7 @@ func (s *APIControllerTestSuite) TestPostNotFound() {
 }
 
 func (s *APIControllerTestSuite) TestSwagger() {
-	req := httptest.NewRequest("GET", "/swagger", nil)
+	req := httptest.NewRequest("GET", "/custom/swagger/index.html", nil)
 	response := httptest.NewRecorder()
 
 	s.server.Engine.ServeHTTP(response, req)
