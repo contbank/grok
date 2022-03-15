@@ -118,7 +118,7 @@ func New(opts ...APIOption) *API {
 		server.router.GET("/healthz", server.healthz)
 	}
 
-	//server.router.GET("/swagger", Swagger(server.settings.API.Swagger))
+	server.router.GET("/swagger", Swagger(server.settings.API.Swagger))
 	if server.swagger != nil {
 		//server.SwaggerSpec.BasePath = "/api/v1"
 		swaggerPath := fmt.Sprintf("%s*any", server.swagger.path)
