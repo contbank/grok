@@ -1,6 +1,7 @@
 package grok
 
 import (
+	"github.com/swaggo/swag"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -29,4 +30,9 @@ func Swagger(file string) gin.HandlerFunc {
 		c.Writer.Write(content)
 		c.Writer.Header().Set("content-type", "application/json")
 	}
+}
+
+type SwaggerSettings struct {
+	spec *swag.Spec
+	path string
 }
