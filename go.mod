@@ -24,6 +24,7 @@ require (
 	github.com/swaggo/swag v1.8.0
 	github.com/tidwall/gjson v1.12.1
 	github.com/tidwall/sjson v1.1.6
+	github.com/xdg-go/pbkdf2 v1.0.0
 	go.mongodb.org/mongo-driver v1.8.1
 	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43 // indirect
 	golang.org/x/text v0.3.7

@@ -46,13 +46,14 @@ type RedisSettings struct {
 
 // AWSSettings ...
 type AWSSettings struct {
-	SNS *AWSCredentials `yaml:"sns"`
-	SQS *AWSCredentials `yaml:"sqs"`
-	IAM *AWSCredentials `yaml:"iam"`
-	S3  *AWSCredentials `yaml:"s3"`
-	SES *SESCredentials `yaml:"ses"`
-	KMS *KMSCredentials `yaml:"kms"`
-	SMS *AWSCredentials `yaml:"sms"`
+	SNS            *AWSCredentials            `yaml:"sns"`
+	SQS            *AWSCredentials            `yaml:"sqs"`
+	IAM            *AWSCredentials            `yaml:"iam"`
+	S3             *AWSCredentials            `yaml:"s3"`
+	SES            *SESCredentials            `yaml:"ses"`
+	KMS            *KMSCredentials            `yaml:"kms"`
+	SMS            *AWSCredentials            `yaml:"sms"`
+	SecretsManager *SecretsManagerCredentials `yaml:"secrets_manager"`
 }
 
 //AWSCredentials ...
@@ -72,6 +73,10 @@ type KMSCredentials struct {
 type SESCredentials struct {
 	Aws    AWSCredentials `yaml:",inline"`
 	Sender string         `yaml:"sender"`
+}
+
+type SecretsManagerCredentials struct {
+	Aws AWSCredentials `yaml:",inline"`
 }
 
 // APIAuth ...
