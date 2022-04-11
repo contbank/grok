@@ -12,15 +12,21 @@ func CreateSession(settings *AWSCredentials) *session.Session {
 	case settings.Fake:
 		return FakeSession(settings.Endpoint, settings.Region)
 	default:
-		profile := "default"
+		cred := &credentials.SharedCredentialsProvider{
+			Profile: "default",
+		}
 
 		if len(settings.Profile) > 0 {
-			profile = settings.Profile
+			cred.Profile = settings.Profile
+		}
+
+		if len(settings.Path) > 0 {
+			cred.Filename = settings.Path
 		}
 
 		sess := session.Must(session.NewSession(&aws.Config{
 			Region:      aws.String(settings.Region),
-			Credentials: credentials.NewSharedCredentials(settings.Path, profile),
+			Credentials: credentials.NewCredentials(cred),
 		}))
 
 		return sess
