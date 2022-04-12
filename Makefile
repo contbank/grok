@@ -16,5 +16,5 @@ run-tests:
 build-package:
 	go mod vendor
 
-tag-version: set_version
+tag-version:
 	autotag && git push --tags
