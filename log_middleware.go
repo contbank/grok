@@ -79,6 +79,7 @@ func request(context *gin.Context, restricteds []string) interface{} {
 	r["host"] = context.Request.Host
 	r["form"] = context.Request.Form
 	r["path"] = context.Request.URL.Path
+	r["full_path"] = context.FullPath()
 	r["method"] = context.Request.Method
 	r["headers"] = restricted(context.Request.Header, restricteds)
 	r["url"] = context.Request.URL.String()
