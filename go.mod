@@ -28,6 +28,7 @@ require (
 	go.mongodb.org/mongo-driver v1.8.1
 	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43 // indirect
 	golang.org/x/text v0.3.7
+	google.golang.org/grpc v1.31.0
 	gopkg.in/auth0.v3 v3.3.1
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22
 	gopkg.in/square/go-jose.v2 v2.5.1

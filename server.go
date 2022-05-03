@@ -3,12 +3,17 @@ package grok
 import (
 	"context"
 	"fmt"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"time"
+
+	"google.golang.org/grpc/reflection"
+
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+	"google.golang.org/grpc"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -25,8 +30,9 @@ type API struct {
 	healthz  gin.HandlerFunc
 	handlers []gin.HandlerFunc
 
-	swagger *SwaggerSettings
-	Container   Container
+	swagger    *SwaggerSettings
+	grpcServer *grpc.Server
+	Container  Container
 }
 
 // APIOption wrapps all server configurations
@@ -77,6 +83,12 @@ func WithSwagger(spec *swag.Spec, path string) APIOption {
 			spec: spec,
 			path: path,
 		}
+	}
+}
+
+func WithGRPC(grpcServer *grpc.Server) APIOption {
+	return func(server *API) {
+		server.grpcServer = grpcServer
 	}
 }
 
@@ -136,6 +148,42 @@ func New(opts ...APIOption) *API {
 	return server
 }
 
+func (server *API) runGRPC() {
+	if server.grpcServer == nil {
+		return
+	}
+	reflection.Register(server.grpcServer)
+	listener, err := net.Listen("tcp", fmt.Sprintf("%s", server.settings.GRPC.Host))
+	if err != nil {
+		logrus.Fatalf("error binding address %s: %v", server.settings.GRPC.Host, err)
+	}
+	go func() {
+		logrus.Infof("GRPC server listening at %s", server.settings.GRPC.Host)
+		if err := server.grpcServer.Serve(listener); err != nil {
+			logrus.Fatalf("failed to serve: %v", err)
+		}
+	}()
+}
+
+func (server *API) stopGRPC(ctx context.Context) {
+	if server.grpcServer == nil {
+		return
+	}
+	stopChan := make(chan interface{})
+	go func() {
+		server.grpcServer.GracefulStop()
+		stopChan <- nil
+	}()
+	select {
+	case <-ctx.Done():
+		logrus.Infof("Error gracefully stopping GRPC server:%v", ctx.Err())
+		server.grpcServer.Stop()
+		logrus.Info("GRPC server forcefully stopped")
+	case <-stopChan:
+		logrus.Info("GRPC server stopped gracefully")
+	}
+}
+
 // Run starts the server.
 func (server *API) Run() {
 	defer server.Container.Close()
@@ -156,12 +204,12 @@ func (server *API) Run() {
 
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-
+		server.stopGRPC(ctx)
 		if err := srv.Shutdown(ctx); err != nil {
-			logrus.WithField("error", err).Error("shotdown error")
+			logrus.WithField("error", err).Error("shutdown error")
 		}
 	}()
-
+	server.runGRPC()
 	logrus.Infof("start api %s", server.settings.API.Host)
 
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
