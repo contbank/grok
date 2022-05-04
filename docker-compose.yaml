@@ -19,16 +19,16 @@ services:
       - "${TMPDIR:-/tmp/localstack}:/tmp/localstack"
       - "/var/run/docker.sock:/var/run/docker.sock"
   tests:
-    image: golang:1.14
+    image: golang:1.17
     container_name: grok_tests
     network_mode: host
     environment:
       - AWS_ACCESS_KEY_ID=clienteid
       - AWS_SECRET_ACCESS_KEY=clientsecret
-    depends_on: 
+    depends_on:
       - mongo
       - localstack
     command: go test ./... -cover
     working_dir: /app
-    volumes: 
+    volumes:
       - ./:/app

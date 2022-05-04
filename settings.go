@@ -10,6 +10,7 @@ import (
 //Settings ...
 type Settings struct {
 	API          *APISettings   `yaml:"api"`
+	GRPC         *GRPCSettings  `yaml:"grpc"`
 	Mongo        *MongoSettings `yaml:"mongo"`
 	Redis        *RedisSettings `yaml:"redis"`
 	UserProvider *UserProvider  `yaml:"user_provider"`
@@ -26,6 +27,10 @@ type APISettings struct {
 	InternalAuth               *InternalAuth               `yaml:"internal_auth"`
 	TransactionalTokenSettings *TransactionalTokenSettings `yaml:"internal_transactional_token"`
 	MaxBodySize                int64                       `yaml:"max_body_size"`
+}
+
+type GRPCSettings struct {
+	Host string `yaml:"host"`
 }
 
 // LogSettings ...
