@@ -9,15 +9,15 @@ redis:
 aws:
   sns:
     fake: true
-    endpoint: http://0.0.0.0:4566
+    endpoint: http://localhost:4566
     region: us-west-2
   sqs:
     fake: true
-    endpoint: http://0.0.0.0:4566
+    endpoint: http://localhost:4566
     region: us-west-2
   kms:
     fake: true
-    endpoint: http://0.0.0.0:4566
+    endpoint: http://localhost:4566
     region: us-west-2
     key: "123"
 log:
