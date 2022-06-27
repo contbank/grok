@@ -71,6 +71,10 @@ func (a *IntraAuthentication) login(ctx context.Context, model IntraAuthenticati
 	//reqbyte for body json format
 	reqbyte, err := json.Marshal(a.session)
 
+	if err != nil {
+		return nil, err
+	}
+
 	req, err := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewReader(reqbyte))
 
 	if err != nil {

@@ -11,11 +11,12 @@ import (
 // Error ...
 type Error struct {
 	Code     int      `json:"code"`
+	Key      string   `json:"key"`
 	Messages []string `json:"messages"`
 }
 
 // NewError  ...
-func NewError(code int, messages ...string) *Error {
+func NewError(code int, key string, messages ...string) *Error {
 	return &Error{Code: code, Messages: messages}
 }
 
@@ -27,7 +28,7 @@ func FromValidationErros(errors error) *Error {
 		return NewError(0, "cannot parse validation errors")
 	}
 
-	err := NewError(http.StatusUnprocessableEntity)
+	err := NewError(http.StatusUnprocessableEntity, "INVALID_PARAMETER")
 
 	message := "validation failed for %s"
 

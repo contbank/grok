@@ -16,15 +16,13 @@ import (
 
 // MessageBrokerSubscriber ...
 type MessageBrokerSubscriber struct {
-	sqsSvc              *sqs.SQS
-	snsSvc              *sns.SNS
-	handler             func(interface{}) error
-	subscriberID        string
-	topicID             string
-	handleType          reflect.Type
-	maxRetries          int
-	producer            *MessageBrokerProducer
-	maxRetriesAttribute string
+	sqsSvc       *sqs.SQS
+	snsSvc       *sns.SNS
+	handler      func(interface{}) error
+	subscriberID string
+	topicID      string
+	handleType   reflect.Type
+	maxRetries   int
 }
 
 // MessageBrokerSubscriberOption ...

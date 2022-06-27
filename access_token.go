@@ -10,6 +10,5 @@ func SetAccessTokenInContext() gin.HandlerFunc {
 		token := c.GetHeader("Authorization")
 		c.Set("access_token", token)
 		c.Next()
-		return
 	}
 }
