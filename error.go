@@ -17,7 +17,7 @@ type Error struct {
 
 // NewError  ...
 func NewError(code int, key string, messages ...string) *Error {
-	return &Error{Code: code, Messages: messages}
+	return &Error{Code: code, Key: key, Messages: messages}
 }
 
 // FromValidationErros ...
