@@ -48,6 +48,7 @@ func (a *InternalTransactionalToken) Validate() gin.HandlerFunc {
 
 		defaultError := Error{
 			Code:     http.StatusBadRequest,
+			Key:      "INVALID_PASSWORD",
 			Messages: []string{"invalid password"},
 		}
 
@@ -133,12 +134,13 @@ func (a *InternalTransactionalToken) Validate() gin.HandlerFunc {
 // getHeaderParameters ...
 func getHeaderParameters(c *gin.Context) (*string, *string, error) {
 	defaultError := Error{
-		Code:     http.StatusBadRequest,
+		Code: http.StatusBadRequest,
 	}
 
 	// get token
 	token := c.Request.Header.Get(TransactionTokenHeader)
 	if len(token) <= 0 {
+		defaultError.Key = "INVALID_PASSWORD"
 		defaultError.Messages = []string{"invalid password"}
 		return nil, nil, &defaultError
 	}
