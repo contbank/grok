@@ -205,3 +205,22 @@ func TestShortenString(t *testing.T) {
 		assert.Equal(t, item.expected, result)
 	}
 }
+
+func TestZipCode(t *testing.T) {
+	var items = []struct {
+		input    string
+		expected string
+	}{
+		{"01301100", "01301100"},
+		{"1301100", "01301100"},
+		{"91370-170", "91370170"},
+		{"01311930", "01311930"},
+		{"01311-930", "01311930"},
+		{"1311930", "01311930"},
+	}
+
+	for _, item := range items {
+		result := grok.ZipCode(item.input)
+		assert.Equal(t, item.expected, result)
+	}
+}

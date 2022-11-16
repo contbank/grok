@@ -13,6 +13,10 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
+const (
+	ZIPCODE_LENGTH = 8
+)
+
 func random(n float64) float64 {
 	source := rand.NewSource(time.Now().UnixNano())
 	r := rand.New(source)
@@ -289,4 +293,15 @@ func GeneratorDigitableLine() string {
 	}
 
 	return OnlyDigits(digitableString)
+}
+
+// ZipCode ...
+func ZipCode(value string) string {
+	aux := OnlyDigits(value)
+	if len(aux) < ZIPCODE_LENGTH {
+		for i := 1; len(aux) < 8; i++ {
+			aux = "0" + aux
+		}
+	}
+	return aux
 }
