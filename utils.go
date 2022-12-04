@@ -1,7 +1,11 @@
 package grok
 
 import (
+	"context"
 	"fmt"
+	"github.com/google/uuid"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 	"math"
 	"math/rand"
 	"strconv"
@@ -15,6 +19,21 @@ import (
 
 const (
 	ZIPCODE_LENGTH = 8
+)
+
+type DateTimeFormat string
+
+const (
+	// ONLY_DATE Format : DD/MM/YYYY
+	ONLY_DATE DateTimeFormat = "ONLY_DATE"
+	// ONLY_TIME Format : 15:50:02
+	ONLY_TIME DateTimeFormat = "ONLY_TIME"
+	// ONLY_TIME_EXTENSION Format : 15h50min
+	ONLY_TIME_EXTENSION DateTimeFormat = "ONLY_TIME_EXTENSION"
+	// DATETIME Format : DD/MM/YYYY às 15:50:02
+	DATETIME DateTimeFormat = "DATETIME"
+	// DATETIME_EXTENSION Format : DD/MM/YYYY às 15h50min
+	DATETIME_EXTENSION DateTimeFormat = "DATETIME_EXTENSION"
 )
 
 func random(n float64) float64 {
@@ -304,4 +323,77 @@ func ZipCode(value string) string {
 		}
 	}
 	return aux
+}
+
+// FormatCurrencyToString ...
+func FormatCurrencyToString(amount float64) string {
+	lang := message.NewPrinter(language.BrazilianPortuguese)
+	return lang.Sprintf("R$ %.2f", amount)
+}
+
+// IsValidDatetime ...
+func IsValidDatetime(datetime *time.Time) bool {
+	if datetime == nil || datetime.IsZero() {
+		return false
+	}
+	return true
+}
+
+// ChangeDate ...
+func ChangeDate(datetime time.Time, hours int32) *time.Time {
+	aux := datetime.Add(time.Duration(hours) * time.Hour)
+	return &aux
+}
+
+// OnlyDate ...
+func OnlyDate(datetime *time.Time) *time.Time {
+	if datetime == nil {
+		return nil
+	}
+	response := time.Date(datetime.Year(), datetime.Month(), datetime.Day(), 00, 00, 00, 00, time.UTC)
+	return &response
+}
+
+// FormatDateTimeToString ...
+func FormatDateTimeToString(datetime time.Time, format DateTimeFormat) string {
+	switch format {
+	case ONLY_DATE:
+		return datetime.Format("02/01/2006")
+	case ONLY_TIME:
+		return datetime.Format("15:04:05")
+	case ONLY_TIME_EXTENSION:
+		return datetime.Format("15h04min")
+	case DATETIME:
+		return datetime.Format("02/01/2006 15:04:05")
+	case DATETIME_EXTENSION:
+		return datetime.Format("02/01/2006 às 15h04min")
+	default:
+		return datetime.Format("02/01/2006 15:04:05")
+	}
+}
+
+// GenerateNewRequestID ...
+func GenerateNewRequestID(ctx context.Context) context.Context {
+	requestID := uuid.New().String()
+	ctx = context.WithValue(ctx, "Request-Id", requestID)
+	return ctx
+}
+
+// GenerateNewWorkerRequestID ...
+func GenerateNewWorkerRequestID(ctx context.Context) context.Context {
+	workerRequestID := uuid.New().String()
+	ctx = context.WithValue(ctx, "Worker-Request-Id", workerRequestID)
+	return ctx
+}
+
+// GetRequestID ...
+func GetRequestID(ctx context.Context) string {
+	requestID, _ := ctx.Value("Request-Id").(string)
+	return requestID
+}
+
+// GetWorkerRequestID ...
+func GetWorkerRequestID(ctx context.Context) string {
+	workerRequestID, _ := ctx.Value("Worker-Request-Id").(string)
+	return workerRequestID
 }

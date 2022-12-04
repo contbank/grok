@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"io/ioutil"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -40,6 +41,15 @@ func NewMongoConnection(connectionString string, caFilePath *string) *mongo.Clie
 	return client
 }
 
+// IsNotFoundError return true when not found error
+func IsNotFoundError(err error) bool {
+	if err != nil && strings.Contains(strings.ToLower(err.Error()), "not found") {
+		return true
+	}
+	return err != nil && strings.Contains(strings.ToLower(err.Error()), "no documents in result")
+}
+
+// getCustomTLSConfig ...
 func getCustomTLSConfig(caFile string) *tls.Config {
 	tlsConfig := new(tls.Config)
 	certs, err := ioutil.ReadFile(caFile)
