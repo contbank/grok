@@ -43,6 +43,9 @@ func NewMongoConnection(connectionString string, caFilePath *string) *mongo.Clie
 
 // IsNotFoundError return true when not found error
 func IsNotFoundError(err error) bool {
+	if err != nil && err == mongo.ErrNoDocuments {
+		return true
+	}
 	if err != nil && strings.Contains(strings.ToLower(err.Error()), "not found") {
 		return true
 	}
