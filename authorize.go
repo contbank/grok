@@ -8,6 +8,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const (
+	PARTNERS_SCOPE = "read:partners"
+)
+
 // Authorize ...
 func Authorize(scope string) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -103,4 +107,21 @@ func (a *APIAuthorize) Authorize(scope string) gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+// IsPartner ...
+func IsPartner(c *gin.Context) bool {
+	permissions, exists := c.Get("permissions")
+
+	if !exists {
+		return false
+	}
+
+	for _, permission := range permissions.([]interface{}) {
+		if permission == PARTNERS_SCOPE {
+			return true
+		}
+	}
+
+	return false
 }
