@@ -228,19 +228,19 @@ func TestZipCode(t *testing.T) {
 
 // TestFormatCurrencyToString ...
 func TestFormatCurrencyToString(t *testing.T) {
-	assert.Equal(t, "R$ 0,01", grok.FormatCurrencyToString(0.01))
-	assert.Equal(t, "R$ 0,91", grok.FormatCurrencyToString(0.91))
-	assert.Equal(t, "R$ 1,00", grok.FormatCurrencyToString(1.00))
-	assert.Equal(t, "R$ 1,01", grok.FormatCurrencyToString(1.01))
-	assert.Equal(t, "R$ 5,06", grok.FormatCurrencyToString(5.06))
-	assert.Equal(t, "R$ 51,06", grok.FormatCurrencyToString(51.06))
-	assert.Equal(t, "R$ 576,06", grok.FormatCurrencyToString(576.06))
-	assert.Equal(t, "R$ 8.576,06", grok.FormatCurrencyToString(8576.06))
-	assert.Equal(t, "R$ 576,06", grok.FormatCurrencyToString(0576.06))
-	assert.Equal(t, "R$ 3.576,00", grok.FormatCurrencyToString(3576))
-	assert.Equal(t, "R$ 23.576,00", grok.FormatCurrencyToString(23576))
-	assert.Equal(t, "R$ 197.576,06", grok.FormatCurrencyToString(197576.06))
-	assert.Equal(t, "R$ 1.000.576,06", grok.FormatCurrencyToString(1000576.06))
+	assert.Equal(t, "R$ 0,01", grok.FormatCurrencyToString(0.01, true))
+	assert.Equal(t, "R$ 0,91", grok.FormatCurrencyToString(0.91, true))
+	assert.Equal(t, "R$ 1,00", grok.FormatCurrencyToString(1.00, true))
+	assert.Equal(t, "R$ 1,01", grok.FormatCurrencyToString(1.01, true))
+	assert.Equal(t, "R$ 5,06", grok.FormatCurrencyToString(5.06, true))
+	assert.Equal(t, "R$ 51,06", grok.FormatCurrencyToString(51.06, true))
+	assert.Equal(t, "R$ 576,06", grok.FormatCurrencyToString(576.06, true))
+	assert.Equal(t, "R$ 8.576,06", grok.FormatCurrencyToString(8576.06, true))
+	assert.Equal(t, "R$ 576,06", grok.FormatCurrencyToString(0576.06, true))
+	assert.Equal(t, "R$ 3.576,00", grok.FormatCurrencyToString(3576, true))
+	assert.Equal(t, "R$ 23.576,00", grok.FormatCurrencyToString(23576, true))
+	assert.Equal(t, "R$ 197.576,06", grok.FormatCurrencyToString(197576.06, true))
+	assert.Equal(t, "R$ 1.000.576,06", grok.FormatCurrencyToString(1000576.06, true))
 }
 
 // TestFormatDateTimeToString_ONLY_DATE ...

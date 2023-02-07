@@ -8,6 +8,7 @@ import (
 	"golang.org/x/text/message"
 	"math"
 	"math/rand"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -34,6 +35,15 @@ const (
 	DATETIME DateTimeFormat = "DATETIME"
 	// DATETIME_EXTENSION Format : DD/MM/YYYY às 15h50min
 	DATETIME_EXTENSION DateTimeFormat = "DATETIME_EXTENSION"
+)
+
+const (
+	// CNPJFormatPattern ...
+	CNPJFormatPattern string = `([\d]{2})([\d]{3})([\d]{3})([\d]{4})([\d]{2})`
+	// CPFFormatPattern ...
+	CPFFormatPattern string = `([\d]{3})([\d]{3})([\d]{3})([\d]{2})`
+	// BarcodePattern ...
+	BarcodePattern string = `([\d]{5})([\d]{5})([\d]{5})([\d]{6})([\d]{5})([\d]{6})([\d]{1})([\d]{14})`
 )
 
 func random(n float64) float64 {
@@ -325,10 +335,18 @@ func ZipCode(value string) string {
 	return aux
 }
 
-// FormatCurrencyToString ...
-func FormatCurrencyToString(amount float64) string {
+// FormatCurrencyToString returns BRL format 99,99
+func FormatCurrencyToString(amount float64, hasCurrencySymbol bool) string {
 	lang := message.NewPrinter(language.BrazilianPortuguese)
-	return lang.Sprintf("R$ %.2f", amount)
+	var result string
+
+	if hasCurrencySymbol {
+		result = lang.Sprintf("R$ %.2f", amount)
+	} else {
+		result = lang.Sprintf("%.2f", amount)
+	}
+
+	return result
 }
 
 // IsValidDatetime ...
@@ -370,6 +388,64 @@ func FormatDateTimeToString(datetime time.Time, format DateTimeFormat) string {
 	default:
 		return datetime.Format("02/01/2006 15:04:05")
 	}
+}
+
+// FormatBarcode format: 99999.99999 99999.999999 99999.999999 9 99999999999999
+func FormatBarcode(str string) string {
+	expr, err := regexp.Compile(BarcodePattern)
+
+	if err != nil {
+		return str
+	}
+
+	return expr.ReplaceAllString(str, "$1.$2 $3.$4 $5.$6 $7 $8")
+}
+
+// FormatCNPJ returns a formatted CNPJ:
+// 99.999.999/9999-99
+func FormatCNPJ(str string, returnType bool) string {
+	var result string
+	expr, err := regexp.Compile(CNPJFormatPattern)
+
+	if err != nil {
+		return str
+	}
+
+	if returnType {
+		result = fmt.Sprintf("CNPJ - %s", expr.ReplaceAllString(str, "$1.$2.$3/$4-$5"))
+	} else {
+		result = expr.ReplaceAllString(str, "$1.$2.$3/$4-$5")
+	}
+	return result
+}
+
+// FormatCPF returns a formatted CPF:
+// 999.999.999-99
+func FormatCPF(str string, returnType bool) string {
+	var result string
+	expr, err := regexp.Compile(CPFFormatPattern)
+
+	if err != nil {
+		return str
+	}
+
+	if returnType {
+		result = fmt.Sprintf("CPF - %s", expr.ReplaceAllString(str, "$1.$2.$3-$4"))
+	} else {
+		result = expr.ReplaceAllString(str, "$1.$2.$3-$4")
+	}
+
+	return result
+}
+
+// FormatCNPJOrCPF format a CPF or CNPJ
+func FormatCNPJOrCPF(document string, returnType bool) string {
+	if len(document) == 11 {
+		return FormatCPF(document, returnType)
+	} else if len(document) == 14 {
+		return FormatCNPJ(document, returnType)
+	}
+	return document
 }
 
 // GenerateNewRequestID ...
