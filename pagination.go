@@ -2,8 +2,12 @@ package grok
 
 // PaginationResult ...
 type PaginationResult struct {
-	Total int64 `json:"total"`
-	Pages int64 `json:"pages"`
+	Total         int64 `json:"total"`
+	TotalReturned int64 `json:"total_returned"`
+	PerPage       int64 `json:"per_page"`
+	CurrentPage   int64 `json:"current_page"`
+	Pages         int64 `json:"pages"`
+	HasNextPage   bool  `json:"has_next_page"`
 }
 
 // TotalPage ...
@@ -16,5 +20,6 @@ func TotalPage(totalRows int64, perPage int64) (pag int64) {
 	if rest > 0 {
 		totPage += 1
 	}
+
 	return totPage
 }
