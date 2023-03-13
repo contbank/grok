@@ -7,7 +7,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-//Settings ...
+// Settings ...
 type Settings struct {
 	API          *APISettings   `yaml:"api"`
 	GRPC         *GRPCSettings  `yaml:"grpc"`
@@ -61,7 +61,7 @@ type AWSSettings struct {
 	SecretsManager *SecretsManagerCredentials `yaml:"secrets_manager"`
 }
 
-//AWSCredentials ...
+// AWSCredentials ...
 type AWSCredentials struct {
 	Path     string `yaml:"path"`
 	Fake     bool   `yaml:"fake"`
@@ -95,9 +95,9 @@ type APIAuth struct {
 
 // InternalAuth ...
 type InternalAuth struct {
-	Fake    bool   `yaml:"fake"`
-	URL     string `yaml:"url"`
-	Success *bool  `yaml:"success"`
+	Fake    bool     `yaml:"fake"`
+	URLs    []string `yaml:"urls"`
+	Success *bool    `yaml:"success"`
 }
 
 type TransactionalTokenSettings struct {

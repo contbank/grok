@@ -3,7 +3,9 @@ package grok
 import (
 	"bytes"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -62,45 +64,48 @@ func NewInternalAuthorize(settings *InternalAuth) InternalAuthorize {
 
 func (a *APIAuthorize) Authorize(scope string) gin.HandlerFunc {
 	return func(c *gin.Context) {
+
 		if a.settings == nil {
 			c.AbortWithStatus(http.StatusForbidden)
 			return
 		}
 
-		payload := struct {
-			Permission string `json:"permission,omitempty"`
-		}{
-			Permission: scope,
+		accountID := c.Param("account_id")
+		if len(accountID) != 0 {
+
+			response, err := getAccounts(c, accountID, a.settings.URLs[1])
+			if err != nil {
+				c.AbortWithStatus(http.StatusForbidden)
+				return
+			}
+
+			defer response.Body.Close()
+
+			if response.StatusCode != http.StatusOK {
+				c.AbortWithStatus(http.StatusForbidden)
+				return
+			}
+
+			identifier := new(string)
+			responseBody, _ := ioutil.ReadAll(response.Body)
+			if err := json.Unmarshal(responseBody, identifier); err != nil {
+				c.AbortWithStatus(http.StatusForbidden)
+				return
+			}
+
+			//c.Header("X-Current-Identity", *identifier)
+			c.Request.Header.Set("X-Current-Identity", *identifier)
 		}
 
-		b, err := json.Marshal(payload)
+		response, err := postAuthorization(c, scope, a.settings.URLs[0])
 		if err != nil {
 			c.AbortWithStatus(http.StatusForbidden)
 			return
 		}
 
-		req, err := http.NewRequest("POST", a.settings.URL, bytes.NewReader(b))
-		if err != nil {
-			c.AbortWithStatus(http.StatusForbidden)
-			return
-		}
+		defer response.Body.Close()
 
-		jwt := c.Request.Header.Get("authorization")
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Authorization", jwt)
-		req.Header.Set("X-Current-Identity", c.Request.Header.Get("X-Current-Identity"))
-
-		client := http.Client{}
-		resp, err := client.Do(req)
-
-		if err != nil {
-			c.AbortWithStatus(http.StatusForbidden)
-			return
-		}
-
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
+		if response.StatusCode != http.StatusOK {
 			c.AbortWithStatus(http.StatusForbidden)
 			return
 		}
@@ -124,4 +129,57 @@ func IsPartner(c *gin.Context) bool {
 	}
 
 	return false
+}
+
+func postAuthorization(c *gin.Context, scope string, URL string) (*http.Response, error) {
+
+	payload := struct {
+		Permission string `json:"permission,omitempty"`
+	}{
+		Permission: scope,
+	}
+
+	b, err := json.Marshal(payload)
+	if err != nil {
+		return nil, NewError(http.StatusForbidden, "SCOPE_NOT_FOUND", "error token scope not found")
+	}
+
+	req, err := http.NewRequest("POST", URL, bytes.NewReader(b))
+	if err != nil {
+		return nil, NewError(http.StatusForbidden, "ERROR_POST", "error on post to authorizations")
+	}
+
+	jwt := c.Request.Header.Get("authorization")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", jwt)
+	req.Header.Set("X-Current-Identity", c.Request.Header.Get("X-Current-Identity"))
+
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+func getAccounts(c *gin.Context, accountID string, URL string) (*http.Response, error) {
+
+	newURL := strings.Replace(URL, ":account_id", accountID, -1)
+	req, err := http.NewRequest("GET", newURL, nil)
+	if err != nil {
+		return nil, NewError(http.StatusForbidden, "ERROR_GET", "error on get to accounts")
+	}
+
+	jwt := c.Request.Header.Get("authorization")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", jwt)
+
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
 }
