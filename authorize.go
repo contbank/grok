@@ -11,7 +11,9 @@ import (
 )
 
 const (
-	PARTNERS_SCOPE = "read:partners"
+	PARTNERS_SCOPE     = "read:partners"
+	X_CURRENT_IDENTITY = "X-Current-Identity"
+	ACCOUNT_ID_PARAM   = "account_id"
 )
 
 // Authorize ...
@@ -116,10 +118,10 @@ func (a *APIAuthorize) Authorize(scope string) gin.HandlerFunc {
 			return
 		}
 
-		accountID := c.Param("account_id")
+		accountID := c.Param(ACCOUNT_ID_PARAM)
 		if len(accountID) != 0 {
 
-			response, err := getAccounts(c, accountID, a.settings.URLs[1])
+			response, err := a.GetAccounts(c, accountID, a.settings.URLs[1])
 			if err != nil {
 				c.AbortWithStatus(http.StatusForbidden)
 				return
@@ -140,10 +142,10 @@ func (a *APIAuthorize) Authorize(scope string) gin.HandlerFunc {
 			}
 
 			//c.Header("X-Current-Identity", *identifier)
-			c.Request.Header.Set("X-Current-Identity", *identifier)
+			c.Request.Header.Set(X_CURRENT_IDENTITY, *identifier)
 		}
 
-		response, err := postAuthorization(c, scope, a.settings.URLs[0])
+		response, err := a.PostAuthorization(c, scope, a.settings.URLs[0])
 		if err != nil {
 			c.AbortWithStatus(http.StatusForbidden)
 			return
@@ -175,8 +177,34 @@ func (a *APIAuthorize) PermissionsRequired(scopes []string) gin.HandlerFunc {
 
 		valid := true
 
+		if a.RequestFullPathHasAccountID(c) {
+
+			accountID := c.Param(ACCOUNT_ID_PARAM)
+			response, err := a.GetAccounts(c, accountID, a.settings.URLs[1])
+			if err != nil {
+				c.AbortWithStatus(http.StatusForbidden)
+				return
+			}
+
+			defer response.Body.Close()
+
+			if response.StatusCode != http.StatusOK {
+				c.AbortWithStatus(http.StatusForbidden)
+				return
+			}
+
+			identifier := new(string)
+			responseBody, _ := ioutil.ReadAll(response.Body)
+			if err := json.Unmarshal(responseBody, identifier); err != nil {
+				c.AbortWithStatus(http.StatusForbidden)
+				return
+			}
+
+			c.Request.Header.Set(X_CURRENT_IDENTITY, *identifier)
+		}
+
 		jwt := c.Request.Header.Get("authorization")
-		currentIdentity := c.Request.Header.Get("X-Current-Identity")
+		currentIdentity := c.Request.Header.Get(X_CURRENT_IDENTITY)
 
 		for _, elemScope := range scopes {
 			if !a.verifyAuthorizationPermission(elemScope, jwt, currentIdentity) {
@@ -211,7 +239,45 @@ func IsPartner(c *gin.Context) bool {
 	return false
 }
 
-func postAuthorization(c *gin.Context, scope string, URL string) (*http.Response, error) {
+// verifyAuthorizationPermission ...
+func (a *APIAuthorize) verifyAuthorizationPermission(scope string, jwt string, currentIdentity string) bool {
+	payload := struct {
+		Permission string `json:"permission,omitempty"`
+	}{
+		Permission: scope,
+	}
+
+	b, err := json.Marshal(payload)
+	if err != nil {
+		return false
+	}
+
+	req, err := http.NewRequest("POST", a.settings.URLs[0], bytes.NewReader(b))
+	if err != nil {
+		return false
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", jwt)
+	req.Header.Set(X_CURRENT_IDENTITY, currentIdentity)
+
+	client := http.Client{}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return false
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return false
+	}
+
+	return true
+}
+
+func (a *APIAuthorize) PostAuthorization(c *gin.Context, scope string, URL string) (*http.Response, error) {
 
 	payload := struct {
 		Permission string `json:"permission,omitempty"`
@@ -232,7 +298,7 @@ func postAuthorization(c *gin.Context, scope string, URL string) (*http.Response
 	jwt := c.Request.Header.Get("authorization")
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", jwt)
-	req.Header.Set("X-Current-Identity", c.Request.Header.Get("X-Current-Identity"))
+	req.Header.Set(X_CURRENT_IDENTITY, c.Request.Header.Get(X_CURRENT_IDENTITY))
 
 	client := http.Client{}
 	resp, err := client.Do(req)
@@ -243,7 +309,7 @@ func postAuthorization(c *gin.Context, scope string, URL string) (*http.Response
 	return resp, nil
 }
 
-func getAccounts(c *gin.Context, accountID string, URL string) (*http.Response, error) {
+func (a *APIAuthorize) GetAccounts(c *gin.Context, accountID string, URL string) (*http.Response, error) {
 
 	newURL := strings.Replace(URL, ":account_id", accountID, -1)
 	req, err := http.NewRequest("GET", newURL, nil)
@@ -262,4 +328,11 @@ func getAccounts(c *gin.Context, accountID string, URL string) (*http.Response, 
 	}
 
 	return resp, nil
+}
+
+func (a *APIAuthorize) RequestFullPathHasAccountID(c *gin.Context) bool {
+	if len(c.Param(ACCOUNT_ID_PARAM)) != 0 {
+		return true
+	}
+	return false
 }
