@@ -15,6 +15,7 @@ const (
 )
 
 // Authorize ...
+// Deprecated: Use TokenScopeRequired or TokenScopesRequired instead.
 func Authorize(scope string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		permissions, exists := c.Get("permissions")
@@ -35,8 +36,51 @@ func Authorize(scope string) gin.HandlerFunc {
 	}
 }
 
+// TokenScopeRequired ...
+func TokenScopeRequired(scope string) gin.HandlerFunc {
+	return TokenScopesRequired([]string{scope})
+}
+
+// TokenScopesRequired ...
+func TokenScopesRequired(scopes []string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		permissions, exists := c.Get("permissions")
+
+		if !exists {
+			c.AbortWithStatus(http.StatusForbidden)
+			return
+		}
+
+		valid := false
+
+		for pos, elem := range scopes {
+			internalValid := false
+			for _, permission := range permissions.([]interface{}) {
+				if permission == elem {
+					internalValid = true
+				}
+			}
+			if !internalValid {
+				valid = false
+				return
+			} else if pos == len(scopes)-1 {
+				valid = true
+			}
+		}
+
+		if valid {
+			c.Next()
+			return
+		}
+
+		c.AbortWithStatus(http.StatusForbidden)
+	}
+}
+
 type InternalAuthorize interface {
-	Authorize(scope string) gin.HandlerFunc
+	Authorize(scope string) gin.HandlerFunc // deprecated
+	PermissionRequired(scope string) gin.HandlerFunc
+	PermissionsRequired(scopes []string) gin.HandlerFunc
 }
 
 type APIAuthorize struct {
@@ -62,6 +106,8 @@ func NewInternalAuthorize(settings *InternalAuth) InternalAuthorize {
 	}
 }
 
+// Authorize ...
+// Deprecated: Use PermissionRequired or PermissionsRequired instead.
 func (a *APIAuthorize) Authorize(scope string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
@@ -108,6 +154,40 @@ func (a *APIAuthorize) Authorize(scope string) gin.HandlerFunc {
 		if response.StatusCode != http.StatusOK {
 			c.AbortWithStatus(http.StatusForbidden)
 			return
+		}
+
+		c.Next()
+	}
+}
+
+// PermissionRequired ...
+func (a *APIAuthorize) PermissionRequired(scope string) gin.HandlerFunc {
+	return a.PermissionsRequired([]string{scope})
+}
+
+// PermissionsRequired ...
+func (a *APIAuthorize) PermissionsRequired(scopes []string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if a.settings == nil {
+			c.AbortWithStatus(http.StatusForbidden)
+			return
+		}
+
+		valid := true
+
+		jwt := c.Request.Header.Get("authorization")
+		currentIdentity := c.Request.Header.Get("X-Current-Identity")
+
+		for _, elemScope := range scopes {
+			if !a.verifyAuthorizationPermission(elemScope, jwt, currentIdentity) {
+				valid = false
+				c.AbortWithStatus(http.StatusForbidden)
+				return
+			}
+		}
+
+		if !valid {
+			c.AbortWithStatus(http.StatusForbidden)
 		}
 
 		c.Next()
