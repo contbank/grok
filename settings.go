@@ -95,9 +95,10 @@ type APIAuth struct {
 
 // InternalAuth ...
 type InternalAuth struct {
-	Fake    bool     `yaml:"fake"`
-	URLs    []string `yaml:"urls"`
-	Success *bool    `yaml:"success"`
+	Fake    bool      `yaml:"fake"`
+	URL     *string   `yaml:"url"` // deprecated
+	URLs    []*string `yaml:"urls"`
+	Success *bool     `yaml:"success"`
 }
 
 type TransactionalTokenSettings struct {

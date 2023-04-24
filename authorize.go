@@ -80,7 +80,6 @@ func TokenScopesRequired(scopes []string) gin.HandlerFunc {
 }
 
 type InternalAuthorize interface {
-	Authorize(scope string) gin.HandlerFunc // deprecated
 	PermissionRequired(scope string) gin.HandlerFunc
 	PermissionsRequired(scopes []string) gin.HandlerFunc
 }
@@ -108,60 +107,6 @@ func NewInternalAuthorize(settings *InternalAuth) InternalAuthorize {
 	}
 }
 
-// Authorize ...
-// Deprecated: Use PermissionRequired or PermissionsRequired instead.
-func (a *APIAuthorize) Authorize(scope string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-
-		if a.settings == nil {
-			c.AbortWithStatus(http.StatusForbidden)
-			return
-		}
-
-		accountID := c.Param(ACCOUNT_ID_PARAM)
-		if len(accountID) != 0 {
-
-			response, err := a.GetAccounts(c, accountID, a.settings.URLs[1])
-			if err != nil {
-				c.AbortWithStatus(http.StatusForbidden)
-				return
-			}
-
-			defer response.Body.Close()
-
-			if response.StatusCode != http.StatusOK {
-				c.AbortWithStatus(http.StatusForbidden)
-				return
-			}
-
-			identifier := new(string)
-			responseBody, _ := ioutil.ReadAll(response.Body)
-			if err := json.Unmarshal(responseBody, identifier); err != nil {
-				c.AbortWithStatus(http.StatusForbidden)
-				return
-			}
-
-			//c.Header("X-Current-Identity", *identifier)
-			c.Request.Header.Set(X_CURRENT_IDENTITY, *identifier)
-		}
-
-		response, err := a.PostAuthorization(c, scope, a.settings.URLs[0])
-		if err != nil {
-			c.AbortWithStatus(http.StatusForbidden)
-			return
-		}
-
-		defer response.Body.Close()
-
-		if response.StatusCode != http.StatusOK {
-			c.AbortWithStatus(http.StatusForbidden)
-			return
-		}
-
-		c.Next()
-	}
-}
-
 // PermissionRequired ...
 func (a *APIAuthorize) PermissionRequired(scope string) gin.HandlerFunc {
 	return a.PermissionsRequired([]string{scope})
@@ -178,9 +123,13 @@ func (a *APIAuthorize) PermissionsRequired(scopes []string) gin.HandlerFunc {
 		valid := true
 
 		if a.RequestFullPathHasAccountID(c) {
+			if a.settings.URLs == nil || len(a.settings.URLs) < 2 {
+				c.AbortWithStatus(http.StatusInternalServerError)
+				return
+			}
 
 			accountID := c.Param(ACCOUNT_ID_PARAM)
-			response, err := a.GetAccounts(c, accountID, a.settings.URLs[1])
+			response, err := a.GetAccounts(c, accountID, *a.settings.URLs[1])
 			if err != nil {
 				c.AbortWithStatus(http.StatusForbidden)
 				return
@@ -203,11 +152,24 @@ func (a *APIAuthorize) PermissionsRequired(scopes []string) gin.HandlerFunc {
 			c.Request.Header.Set(X_CURRENT_IDENTITY, *identifier)
 		}
 
-		jwt := c.Request.Header.Get("authorization")
+		// current identity is required
 		currentIdentity := c.Request.Header.Get(X_CURRENT_IDENTITY)
+		if len(currentIdentity) == 0 {
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+
+		var url *string
+		if !a.RequestFullPathHasAccountID(c) && a.settings.URL != nil {
+			url = a.settings.URL
+		} else {
+			url = a.settings.URLs[0]
+		}
+
+		jwt := c.Request.Header.Get("authorization")
 
 		for _, elemScope := range scopes {
-			if !a.verifyAuthorizationPermission(elemScope, jwt, currentIdentity) {
+			if !a.verifyAuthorizationPermission(elemScope, jwt, currentIdentity, *url) {
 				valid = false
 				c.AbortWithStatus(http.StatusForbidden)
 				return
@@ -240,7 +202,9 @@ func IsPartner(c *gin.Context) bool {
 }
 
 // verifyAuthorizationPermission ...
-func (a *APIAuthorize) verifyAuthorizationPermission(scope string, jwt string, currentIdentity string) bool {
+func (a *APIAuthorize) verifyAuthorizationPermission(scope string, jwt string,
+	currentIdentity string, url string) bool {
+
 	payload := struct {
 		Permission string `json:"permission,omitempty"`
 	}{
@@ -252,7 +216,7 @@ func (a *APIAuthorize) verifyAuthorizationPermission(scope string, jwt string, c
 		return false
 	}
 
-	req, err := http.NewRequest("POST", a.settings.URLs[0], bytes.NewReader(b))
+	req, err := http.NewRequest("POST", url, bytes.NewReader(b))
 	if err != nil {
 		return false
 	}
