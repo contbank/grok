@@ -147,9 +147,6 @@ func RequiredHeaders(headers ...string) gin.HandlerFunc {
 			}
 		}
 
-		if len(ctx.HandlerNames()) > 1 {
-			ctx.Next()
-		}
-
+		ctx.Next()
 	}
 }
