@@ -9,8 +9,8 @@ require (
 	github.com/aybabtme/iocontrol v0.0.0-20150809002002-ad15bcfc95a0 // indirect
 	github.com/benbjohnson/clock v1.0.3 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
-	github.com/gin-gonic/gin v1.7.7
-	github.com/go-playground/validator/v10 v10.4.1
+	github.com/gin-gonic/gin v1.9.0
+	github.com/go-playground/validator/v10 v10.11.2
 	github.com/go-redis/redis/v8 v8.11.4
 	github.com/google/uuid v1.1.2
 	github.com/patrickmn/go-cache v2.1.0+incompatible
@@ -18,7 +18,7 @@ require (
 	github.com/sendgrid/sendgrid-go v3.7.0+incompatible
 	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/cobra v1.1.1
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.8.1
 	github.com/swaggo/files v0.0.0-20210815190702-a29dd2bc99b2
 	github.com/swaggo/gin-swagger v1.4.1
 	github.com/swaggo/swag v1.8.0
@@ -27,7 +27,7 @@ require (
 	github.com/xdg-go/pbkdf2 v1.0.0
 	go.mongodb.org/mongo-driver v1.8.1
 	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43 // indirect
-	golang.org/x/text v0.3.7
+	golang.org/x/text v0.7.0
 	google.golang.org/grpc v1.31.0
 	gopkg.in/auth0.v3 v3.3.1
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22
