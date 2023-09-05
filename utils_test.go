@@ -247,12 +247,20 @@ func TestFormatCurrencyToString(t *testing.T) {
 func TestFormatDateTimeToString_ONLY_DATE(t *testing.T) {
 	datetime := time.Date(2022, 12, 05, 22, 05, 01, 99999999, time.UTC)
 	assert.Equal(t, "05/12/2022", grok.FormatDateTimeToString(datetime, grok.ONLY_DATE))
+	datetime = time.Date(2022, 12, 05, 22, 05, 01, 99999999, time.UTC)
+	assert.Equal(t, "2022-12-05", grok.FormatDateTimeToString(datetime, grok.ONLY_DATE_US))
 	datetime = time.Date(2022, 02, 01, 22, 05, 01, 99999999, time.UTC)
 	assert.Equal(t, "01/02/2022", grok.FormatDateTimeToString(datetime, grok.ONLY_DATE))
+	datetime = time.Date(2022, 02, 01, 22, 05, 01, 99999999, time.UTC)
+	assert.Equal(t, "2022-02-01", grok.FormatDateTimeToString(datetime, grok.ONLY_DATE_US))
 	datetime = time.Date(2022, 12, 13, 22, 05, 01, 99999999, time.UTC)
 	assert.Equal(t, "13/12/2022", grok.FormatDateTimeToString(datetime, grok.ONLY_DATE))
+	datetime = time.Date(2022, 12, 13, 22, 05, 01, 99999999, time.UTC)
+	assert.Equal(t, "2022-12-13", grok.FormatDateTimeToString(datetime, grok.ONLY_DATE_US))
 	datetime = time.Date(2022, 01, 27, 22, 05, 01, 99999999, time.UTC)
 	assert.Equal(t, "27/01/2022", grok.FormatDateTimeToString(datetime, grok.ONLY_DATE))
+	datetime = time.Date(2022, 01, 27, 22, 05, 01, 99999999, time.UTC)
+	assert.Equal(t, "2022-01-27", grok.FormatDateTimeToString(datetime, grok.ONLY_DATE_US))
 }
 
 // TestFormatDateTimeToString_ONLY_TIME ...

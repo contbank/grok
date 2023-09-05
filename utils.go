@@ -27,6 +27,8 @@ type DateTimeFormat string
 const (
 	// ONLY_DATE Format : DD/MM/YYYY
 	ONLY_DATE DateTimeFormat = "ONLY_DATE"
+	// ONLY_DATE_US Format : YYYY-MM-DD
+	ONLY_DATE_US DateTimeFormat = "ONLY_DATE_US"
 	// ONLY_TIME Format : 15:50:02
 	ONLY_TIME DateTimeFormat = "ONLY_TIME"
 	// ONLY_TIME_EXTENSION Format : 15h50min
@@ -377,6 +379,8 @@ func FormatDateTimeToString(datetime time.Time, format DateTimeFormat) string {
 	switch format {
 	case ONLY_DATE:
 		return datetime.Format("02/01/2006")
+	case ONLY_DATE_US:
+		return datetime.Format("2006-01-02")
 	case ONLY_TIME:
 		return datetime.Format("15:04:05")
 	case ONLY_TIME_EXTENSION:
