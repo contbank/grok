@@ -3,9 +3,6 @@ package grok
 import (
 	"context"
 	"fmt"
-	"github.com/google/uuid"
-	"golang.org/x/text/language"
-	"golang.org/x/text/message"
 	"math"
 	"math/rand"
 	"regexp"
@@ -13,6 +10,10 @@ import (
 	"strings"
 	"time"
 	"unicode"
+
+	"github.com/google/uuid"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 
 	"golang.org/x/text/transform"
 	"golang.org/x/text/unicode/norm"
@@ -476,4 +477,14 @@ func GetRequestID(ctx context.Context) string {
 func GetWorkerRequestID(ctx context.Context) string {
 	workerRequestID, _ := ctx.Value("Worker-Request-Id").(string)
 	return workerRequestID
+}
+
+// CreateUuIDV4 ...
+func CreateUuIDV4() (*string, error) {
+	uuidV4, err := uuid.NewRandom()
+	if err != nil {
+		return nil, err
+	}
+	uuidV4String := uuidV4.String()
+	return &uuidV4String, nil
 }

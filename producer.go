@@ -2,8 +2,11 @@ package grok
 
 import (
 	"encoding/json"
-	"github.com/sirupsen/logrus"
+	"fmt"
+	"strconv"
 	"strings"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -22,8 +25,8 @@ func NewMessageBrokerProducer(s *session.Session) *MessageBrokerProducer {
 }
 
 // Publish ...
-func (p *MessageBrokerProducer) Publish(topicID string, data interface{}) (string, error) {
-	messageId, err := p.PublishWihAttribrutes(topicID, data, nil)
+func (p *MessageBrokerProducer) Publish(topicID string, data interface{}, attributes map[string]string) (string, error) {
+	messageId, err := p.PublishWihAttributes(topicID, data, attributes)
 	return messageId, err
 }
 
@@ -33,7 +36,7 @@ func (p *MessageBrokerProducer) PublishMany(topics []string, data interface{}) (
 	publishOk := make(map[string]string, len(topics))
 
 	for _, topicName := range topics {
-		messageId, err := p.Publish(topicName, data)
+		messageId, err := p.Publish(topicName, data, nil)
 		if err != nil {
 			publishErrors[topicName] = err
 			logrus.WithError(err).
@@ -48,14 +51,14 @@ func (p *MessageBrokerProducer) PublishMany(topics []string, data interface{}) (
 }
 
 // PublishWihAttribrutes ...
-func (p *MessageBrokerProducer) PublishWihAttribrutes(topicID string, data interface{}, attributes map[string]string) (string, error) {
+func (p *MessageBrokerProducer) PublishWihAttributes(topicID string, data interface{}, attributes map[string]string) (string, error) {
 	body, err := json.Marshal(data)
 
 	if err != nil {
 		return "", err
 	}
 
-	topic, err := createTopicIfNotExists(p.snsSvc, topicID)
+	topic, err := createTopicIfNotExists(p.snsSvc, topicID, attributes)
 
 	if err != nil {
 		return "", err
@@ -63,11 +66,39 @@ func (p *MessageBrokerProducer) PublishWihAttribrutes(topicID string, data inter
 
 	message := string(body)
 
-	output, err := p.snsSvc.Publish(&sns.PublishInput{
+	snsPublishInput := &sns.PublishInput{
 		Message:  &message,
 		TopicArn: topic,
-	})
+	}
 
+	if len(attributes) != 0 {
+		if value, ok := attributes["Fifo"]; ok {
+			fifo, err := strconv.ParseBool(value)
+			if err != nil {
+				return "", err
+			}
+			if fifo {
+				if value, ok := attributes["MessageGroupID"]; ok {
+					snsPublishInput.MessageAttributes = make(map[string]*sns.MessageAttributeValue)
+					snsPublishInput.MessageAttributes["MessageGroupId"] = &sns.MessageAttributeValue{
+						DataType:    aws.String("String"),
+						StringValue: aws.String(value),
+					}
+					snsPublishInput.MessageGroupId = &value
+				}
+				if value, ok := attributes["MessageDeduplicationID"]; ok {
+					snsPublishInput.MessageAttributes = make(map[string]*sns.MessageAttributeValue)
+					snsPublishInput.MessageAttributes["MessageDeduplicationId"] = &sns.MessageAttributeValue{
+						DataType:    aws.String("String"),
+						StringValue: aws.String(value),
+					}
+					snsPublishInput.MessageDeduplicationId = &value
+				}
+			}
+		}
+	}
+
+	output, err := p.snsSvc.Publish(snsPublishInput)
 	if err != nil {
 		return "", err
 	}
@@ -76,15 +107,32 @@ func (p *MessageBrokerProducer) PublishWihAttribrutes(topicID string, data inter
 
 }
 
-func createTopicIfNotExists(snsSvc *sns.SNS, id string) (*string, error) {
+func createTopicIfNotExists(snsSvc *sns.SNS, id string, attributes map[string]string) (*string, error) {
 	var topicArn *string
+	snsName := id
+	snsAttributes := map[string]*string{}
+	if value, ok := attributes["Fifo"]; ok {
+		fifo, err := strconv.ParseBool(value)
+		if err != nil {
+			return nil, err
+		}
 
-	allTopics, _ := snsSvc.ListTopics(&sns.ListTopicsInput{})
+		snsAttributes["FifoTopic"] = &value
+		snsAttributes["ContentBasedDeduplication"] = &value
+		if fifo {
+			snsName = fmt.Sprintf("%s.fifo", snsName)
+		}
+	}
+
+	allTopics, err := snsSvc.ListTopics(&sns.ListTopicsInput{})
+	if err != nil {
+		return nil, err
+	}
 
 	for _, t := range allTopics.Topics {
 		splitTopic := strings.Split(*t.TopicArn, ":")
 		strTopic := splitTopic[len(splitTopic)-1]
-		if strings.Compare(strTopic, id) == 0 {
+		if strings.Compare(strTopic, snsName) == 0 {
 			topicArn = t.TopicArn
 			break
 		}
@@ -95,7 +143,8 @@ func createTopicIfNotExists(snsSvc *sns.SNS, id string) (*string, error) {
 	}
 
 	topic, err := snsSvc.CreateTopic(&sns.CreateTopicInput{
-		Name: aws.String(id),
+		Name:       aws.String(snsName),
+		Attributes: snsAttributes,
 	})
 
 	if err != nil {
