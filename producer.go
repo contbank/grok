@@ -26,7 +26,7 @@ func NewMessageBrokerProducer(s *session.Session) *MessageBrokerProducer {
 
 // Publish ...
 func (p *MessageBrokerProducer) Publish(topicID string, data interface{}, attributes map[string]string) (string, error) {
-	messageId, err := p.PublishWihAttributes(topicID, data, attributes)
+	messageId, err := p.PublishWithAttributes(topicID, data, attributes)
 	return messageId, err
 }
 
@@ -51,7 +51,7 @@ func (p *MessageBrokerProducer) PublishMany(topics []string, data interface{}) (
 }
 
 // PublishWihAttribrutes ...
-func (p *MessageBrokerProducer) PublishWihAttributes(topicID string, data interface{}, attributes map[string]string) (string, error) {
+func (p *MessageBrokerProducer) PublishWithAttributes(topicID string, data interface{}, attributes map[string]string) (string, error) {
 	body, err := json.Marshal(data)
 
 	if err != nil {
