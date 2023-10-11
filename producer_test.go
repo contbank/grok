@@ -28,7 +28,29 @@ func (s *ProducerTestSuite) TestPublish() {
 	session := grok.FakeSession(s.settings.AWS.SNS.Endpoint, s.settings.AWS.SNS.Region)
 	producer := grok.NewMessageBrokerProducer(session)
 
-	messageId, err := producer.Publish("test-topic", map[string]interface{}{"ping": "pong"})
+	messageId, err := producer.Publish("test-topic", map[string]interface{}{"ping": "pong"}, nil)
+
+	s.assert.NoError(err)
+	s.assert.NotNil(messageId)
+}
+
+func (s *ProducerTestSuite) TestPublishFIFO() {
+	session := grok.FakeSession(s.settings.AWS.SNS.Endpoint, s.settings.AWS.SNS.Region)
+	producer := grok.NewMessageBrokerProducer(session)
+
+	messageGroupID, err := grok.CreateUuIDV4()
+	s.assert.NoError(err)
+	s.assert.NotNil(messageGroupID)
+
+	messageDeduplicationID, err := grok.CreateUuIDV4()
+	s.assert.NoError(err)
+	s.assert.NotNil(messageDeduplicationID)
+
+	messageId, err := producer.Publish(
+		"test-topic-fifo",
+		map[string]interface{}{"ping": "pong"},
+		grok.WithFIFOAttributes(messageGroupID, messageDeduplicationID),
+	)
 
 	s.assert.NoError(err)
 	s.assert.NotNil(messageId)

@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/contbank/grok"
 	"github.com/stretchr/testify/assert"
@@ -67,8 +68,60 @@ func (s *MessageBrokerSubscriberTestSuite) TestSubscribe() {
 
 	time.Sleep(time.Second * 3)
 
-	messageId, err := s.producer.Publish(topicID, message)
+	messageId, err := s.producer.Publish(topicID, message, nil)
+	if err != nil {
+		received <- true
+	}
 
+	s.assert.NoError(err)
+	s.assert.NotNil(messageId)
+
+	<-received
+}
+
+func (s *MessageBrokerSubscriberTestSuite) TestFIFOSubscribe() {
+	received := make(chan bool, 1)
+
+	subscriberID := "subs-fifo"
+	topicID := "topic-test-fifo"
+
+	message := map[string]interface{}{"ping": "pong"}
+
+	go func() {
+		messageBroker := grok.NewMessageBrokerSubscriber(
+			grok.WithSessionSQS(s.sessionSQS),
+			grok.WithSessionSNS(s.sessionSNS),
+			grok.WithTopicID(topicID),
+			grok.WithSubscriberID(subscriberID),
+			grok.WithType(reflect.TypeOf(message)),
+			grok.WithFIFO(aws.Bool(true)),
+			grok.WithHandler(func(data interface{}) error {
+				defer func() { received <- true }()
+
+				value, ok := data.(*map[string]interface{})
+				s.assert.True(ok)
+				s.assert.Equal("pong", (*value)["ping"])
+
+				return nil
+			}),
+		)
+
+		err := messageBroker.Run()
+
+		s.assert.NoError(err)
+	}()
+
+	time.Sleep(time.Second * 3)
+
+	messageGroupID, err := grok.CreateUuIDV4()
+	s.assert.NoError(err)
+	s.assert.NotNil(messageGroupID)
+
+	messageDeduplicationID, err := grok.CreateUuIDV4()
+	s.assert.NoError(err)
+	s.assert.NotNil(messageDeduplicationID)
+
+	messageId, err := s.producer.Publish(topicID, message, grok.WithFIFOAttributes(messageGroupID, messageDeduplicationID))
 	if err != nil {
 		received <- true
 	}

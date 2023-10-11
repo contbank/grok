@@ -23,6 +23,7 @@ type MessageBrokerSubscriber struct {
 	topicID      string
 	handleType   reflect.Type
 	maxRetries   int
+	fifo         *bool
 }
 
 // MessageBrokerSubscriberOption ...
@@ -89,9 +90,25 @@ func WithMaxRetries(maxRetries int) MessageBrokerSubscriberOption {
 	}
 }
 
+// WithFIFO - default false
+func WithFIFO(fifo *bool) MessageBrokerSubscriberOption {
+	return func(s *MessageBrokerSubscriber) {
+		s.fifo = fifo
+	}
+}
+
+// WithFIFOAttributes ...
+func WithFIFOAttributes(messageGroupID *string, messageDeduplicationID *string) map[string]string {
+	return map[string]string{
+		"Fifo":                   strconv.FormatBool(true),
+		"MessageGroupID":         *messageGroupID,
+		"MessageDeduplicationID": *messageDeduplicationID,
+	}
+}
+
 // Run ...
 func (s *MessageBrokerSubscriber) Run() error {
-	queueURL, err := createSubscriptionIfNotExists(s.sqsSvc, s.snsSvc, s.subscriberID, s.topicID, s.maxRetries)
+	queueURL, err := createSubscriptionIfNotExists(s.sqsSvc, s.snsSvc, s.subscriberID, s.topicID, s.maxRetries, s.fifo)
 
 	if err != nil {
 		logrus.WithError(err).
@@ -102,7 +119,7 @@ func (s *MessageBrokerSubscriber) Run() error {
 	return s.checkMessages(s.sqsSvc, queueURL)
 }
 
-func createSubscriptionIfNotExists(sqsSvc *sqs.SQS, snsSvc *sns.SNS, subscriberID, topicID string, maxRetries int) (*string, error) {
+func createSubscriptionIfNotExists(sqsSvc *sqs.SQS, snsSvc *sns.SNS, subscriberID, topicID string, maxRetries int, fifo *bool) (*string, error) {
 	listQueueResults, err := sqsSvc.ListQueues(&sqs.ListQueuesInput{
 		QueueNamePrefix: aws.String(subscriberID),
 	})
@@ -125,11 +142,21 @@ func createSubscriptionIfNotExists(sqsSvc *sqs.SQS, snsSvc *sns.SNS, subscriberI
 	}
 
 	if queueURL == nil {
+		sqsName := subscriberID
+		sqsAttributes := map[string]*string{
+			sqs.QueueAttributeNameReceiveMessageWaitTimeSeconds: aws.String("20"),
+		}
+
+		if fifo != nil && *fifo {
+			stringFifo := strconv.FormatBool(*fifo)
+			sqsAttributes[sqs.QueueAttributeNameFifoQueue] = &stringFifo
+			sqsAttributes[sqs.QueueAttributeNameContentBasedDeduplication] = &stringFifo
+			sqsName = fmt.Sprintf("%s.fifo", sqsName)
+		}
+
 		resp, err := sqsSvc.CreateQueue(&sqs.CreateQueueInput{
-			QueueName: aws.String(subscriberID),
-			Attributes: map[string]*string{
-				sqs.QueueAttributeNameReceiveMessageWaitTimeSeconds: aws.String("20"),
-			},
+			QueueName:  aws.String(sqsName),
+			Attributes: sqsAttributes,
 		})
 
 		if err != nil {
@@ -151,11 +178,22 @@ func createSubscriptionIfNotExists(sqsSvc *sqs.SQS, snsSvc *sns.SNS, subscriberI
 	}
 
 	if queueDlqURL == nil {
+
+		dlqName := fmt.Sprintf("%s_dlq", subscriberID)
+		sqsDlqAttributes := map[string]*string{
+			sqs.QueueAttributeNameReceiveMessageWaitTimeSeconds: aws.String("20"),
+		}
+
+		if fifo != nil && *fifo {
+			stringFifo := strconv.FormatBool(*fifo)
+			sqsDlqAttributes[sqs.QueueAttributeNameFifoQueue] = &stringFifo
+			sqsDlqAttributes[sqs.QueueAttributeNameContentBasedDeduplication] = &stringFifo
+			dlqName = fmt.Sprintf("%s.fifo", dlqName)
+		}
+
 		respdlq, err := sqsSvc.CreateQueue(&sqs.CreateQueueInput{
-			QueueName: aws.String(fmt.Sprintf("%s_dlq", subscriberID)),
-			Attributes: map[string]*string{
-				sqs.QueueAttributeNameReceiveMessageWaitTimeSeconds: aws.String("20"),
-			},
+			QueueName:  &dlqName,
+			Attributes: sqsDlqAttributes,
 		})
 
 		if err != nil {
@@ -170,7 +208,12 @@ func createSubscriptionIfNotExists(sqsSvc *sqs.SQS, snsSvc *sns.SNS, subscriberI
 	queueARN := convertQueueURLToARN(*queueURL)
 	queueDlqARN := convertQueueURLToARN(*queueDlqURL)
 
-	topicArn, err := createTopicIfNotExists(snsSvc, topicID)
+	var attributes = make(map[string]string)
+	if fifo != nil && *fifo {
+		attributes["Fifo"] = strconv.FormatBool(*fifo)
+	}
+
+	topicArn, err := createTopicIfNotExists(snsSvc, topicID, attributes)
 
 	if err != nil {
 		logrus.WithError(err).
