@@ -71,13 +71,6 @@ func WithSubscriberID(id string) MessageBrokerSubscriberOption {
 	}
 }
 
-// WithTopicID ...
-//func WithTopicID(t string) MessageBrokerSubscriberOption {
-//	return func(s *MessageBrokerSubscriber) {
-//		s.topicID = t
-//	}
-//}
-
 // método WithTopicID para aceitar múltiplos IDs de tópicos
 func WithTopicID(ids ...string) MessageBrokerSubscriberOption {
 	return func(s *MessageBrokerSubscriber) {

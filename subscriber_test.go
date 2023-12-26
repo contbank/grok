@@ -80,46 +80,51 @@ func (s *MessageBrokerSubscriberTestSuite) TestSubscribe() {
 }
 
 func (s *MessageBrokerSubscriberTestSuite) TestSubscribes() {
-	received := make(chan bool, 1)
+	received := make(chan bool, 2) // Alterado para receber dois sinais
 
 	subscriberID := "subs"
 
 	message := map[string]interface{}{"ping": "pong"}
 
+	topics := []string{"topic-teste", "topic-teste-dois"} // Tópicos a serem inscritos
+
+	messageBroker := grok.NewMessageBrokerSubscriber(
+		grok.WithSessionSQS(s.sessionSQS),
+		grok.WithSessionSNS(s.sessionSNS),
+		grok.WithSubscriberID(subscriberID),
+		grok.WithType(reflect.TypeOf(message)),
+		grok.WithTopicID(topics...), // Usando os tópicos especificados
+		grok.WithHandler(func(data interface{}) error {
+			defer func() { received <- true }()
+
+			value, ok := data.(*map[string]interface{})
+			s.assert.True(ok)
+			s.assert.Equal("pong", (*value)["ping"])
+
+			return nil
+		}),
+	)
+
 	go func() {
-		messageBroker := grok.NewMessageBrokerSubscriber(
-			grok.WithSessionSQS(s.sessionSQS),
-			grok.WithSessionSNS(s.sessionSNS),
-			grok.WithTopicID("topic-teste", "topic-teste-dois"),
-			grok.WithSubscriberID(subscriberID),
-			grok.WithType(reflect.TypeOf(message)),
-			grok.WithHandler(func(data interface{}) error {
-				defer func() { received <- true }()
-
-				value, ok := data.(*map[string]interface{})
-				s.assert.True(ok)
-				s.assert.Equal("pong", (*value)["ping"])
-
-				return nil
-			}),
-		)
-
 		err := messageBroker.Run()
-
 		s.assert.NoError(err)
 	}()
 
 	time.Sleep(time.Second * 3)
 
-	messageId, err := s.producer.Publish("topic-teste-dois", message, nil)
-	if err != nil {
-		received <- true
+	// Enviando mensagens para os tópicos inscritos
+	for _, topic := range topics {
+		messageId, err := s.producer.Publish(topic, message, nil)
+		if err != nil {
+			received <- true
+		}
+		s.assert.NoError(err)
+		s.assert.NotNil(messageId)
 	}
 
-	s.assert.NoError(err)
-	s.assert.NotNil(messageId)
-
-	<-received
+	for i := 0; i < len(topics); i++ {
+		<-received
+	}
 }
 
 func (s *MessageBrokerSubscriberTestSuite) TestFIFOSubscribe() {
