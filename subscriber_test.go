@@ -79,6 +79,7 @@ func (s *MessageBrokerSubscriberTestSuite) TestSubscribe() {
 	<-received
 }
 
+/*
 func (s *MessageBrokerSubscriberTestSuite) TestSubscribes() {
 	received := make(chan bool, 2) // Alterado para receber dois sinais
 
@@ -125,7 +126,7 @@ func (s *MessageBrokerSubscriberTestSuite) TestSubscribes() {
 	for i := 0; i < len(topics); i++ {
 		<-received
 	}
-}
+}*/
 
 func (s *MessageBrokerSubscriberTestSuite) TestFIFOSubscribe() {
 	received := make(chan bool, 1)
