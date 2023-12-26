@@ -82,7 +82,7 @@ func (s *MessageBrokerSubscriberTestSuite) TestSubscribe() {
 func (s *MessageBrokerSubscriberTestSuite) TestSubscribes() {
 	received := make(chan bool, 2) // Alterado para receber dois sinais
 
-	subscriberID := "subs"
+	subscriberID := "subsc"
 
 	message := map[string]interface{}{"ping": "pong"}
 
