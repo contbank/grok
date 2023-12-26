@@ -21,6 +21,7 @@ type MessageBrokerSubscriber struct {
 	handler      func(interface{}) error
 	subscriberID string
 	topicID      string
+	topicIDs     []string
 	handleType   reflect.Type
 	maxRetries   int
 	fifo         *bool
@@ -33,6 +34,7 @@ type MessageBrokerSubscriberOption func(*MessageBrokerSubscriber)
 func NewMessageBrokerSubscriber(opts ...MessageBrokerSubscriberOption) *MessageBrokerSubscriber {
 	subscriber := new(MessageBrokerSubscriber)
 	subscriber.maxRetries = 5
+	subscriber.topicIDs = make([]string, 0)
 
 	for _, opt := range opts {
 		opt(subscriber)
@@ -69,10 +71,10 @@ func WithSubscriberID(id string) MessageBrokerSubscriberOption {
 	}
 }
 
-// WithTopicID ...
-func WithTopicID(t string) MessageBrokerSubscriberOption {
+// método WithTopicID para aceitar múltiplos IDs de tópicos
+func WithTopicID(ids ...string) MessageBrokerSubscriberOption {
 	return func(s *MessageBrokerSubscriber) {
-		s.topicID = t
+		s.topicIDs = append(s.topicIDs, ids...)
 	}
 }
 
@@ -108,15 +110,28 @@ func WithFIFOAttributes(messageGroupID *string, messageDeduplicationID *string) 
 
 // Run ...
 func (s *MessageBrokerSubscriber) Run() error {
-	queueURL, err := createSubscriptionIfNotExists(s.sqsSvc, s.snsSvc, s.subscriberID, s.topicID, s.maxRetries, s.fifo)
 
-	if err != nil {
-		logrus.WithError(err).
-			Errorf("error starting %s", s.subscriberID)
+	if len(s.topicIDs) == 0 {
+		err := NewError(404, "SUBSCRIBER_ERROR", "error in topic subscriber")
+		return err
+	}
+	var queueURL *string
+	var err error
+	for _, topicID := range s.topicIDs {
+		queueURL, err = createSubscriptionIfNotExists(s.sqsSvc, s.snsSvc, s.subscriberID, topicID, s.maxRetries, s.fifo)
+
+		if err != nil {
+			logrus.WithError(err).
+				Errorf("error starting %s", s.subscriberID)
+			continue
+		}
+		logrus.Infof("starting consumer %s with topic %s", s.subscriberID, topicID)
 	}
 
-	logrus.Infof("starting consumer %s with topic %s", s.subscriberID, s.topicID)
-	return s.checkMessages(s.sqsSvc, queueURL)
+	if err := s.checkMessages(s.sqsSvc, queueURL); err != nil {
+		return err
+	}
+	return nil
 }
 
 func createSubscriptionIfNotExists(sqsSvc *sqs.SQS, snsSvc *sns.SNS, subscriberID, topicID string, maxRetries int, fifo *bool) (*string, error) {

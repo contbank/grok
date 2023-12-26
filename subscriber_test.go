@@ -79,6 +79,54 @@ func (s *MessageBrokerSubscriberTestSuite) TestSubscribe() {
 	<-received
 }
 
+func (s *MessageBrokerSubscriberTestSuite) TestSubscribes() {
+	received := make(chan bool, 2) // Alterado para receber dois sinais
+
+	subscriberID := "subsc"
+
+	message := map[string]interface{}{"ping": "pong"}
+
+	topics := []string{"topic-teste", "topic-teste-dois"} // Tópicos a serem inscritos
+
+	messageBroker := grok.NewMessageBrokerSubscriber(
+		grok.WithSessionSQS(s.sessionSQS),
+		grok.WithSessionSNS(s.sessionSNS),
+		grok.WithSubscriberID(subscriberID),
+		grok.WithType(reflect.TypeOf(message)),
+		grok.WithTopicID(topics...), // Usando os tópicos especificados
+		grok.WithHandler(func(data interface{}) error {
+			defer func() { received <- true }()
+
+			value, ok := data.(*map[string]interface{})
+			s.assert.True(ok)
+			s.assert.Equal("pong", (*value)["ping"])
+
+			return nil
+		}),
+	)
+
+	go func() {
+		err := messageBroker.Run()
+		s.assert.NoError(err)
+	}()
+
+	time.Sleep(time.Second * 3)
+
+	// Enviando mensagens para os tópicos inscritos
+	for _, topic := range topics {
+		messageId, err := s.producer.Publish(topic, message, nil)
+		if err != nil {
+			received <- true
+		}
+		s.assert.NoError(err)
+		s.assert.NotNil(messageId)
+	}
+
+	for i := 0; i < len(topics); i++ {
+		<-received
+	}
+}
+
 func (s *MessageBrokerSubscriberTestSuite) TestFIFOSubscribe() {
 	received := make(chan bool, 1)
 
