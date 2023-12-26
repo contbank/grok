@@ -79,6 +79,49 @@ func (s *MessageBrokerSubscriberTestSuite) TestSubscribe() {
 	<-received
 }
 
+func (s *MessageBrokerSubscriberTestSuite) TestSubscribes() {
+	received := make(chan bool, 1)
+
+	subscriberID := "subs"
+
+	message := map[string]interface{}{"ping": "pong"}
+
+	go func() {
+		messageBroker := grok.NewMessageBrokerSubscriber(
+			grok.WithSessionSQS(s.sessionSQS),
+			grok.WithSessionSNS(s.sessionSNS),
+			grok.WithTopicID("topic-teste", "topic-teste-dois"),
+			grok.WithSubscriberID(subscriberID),
+			grok.WithType(reflect.TypeOf(message)),
+			grok.WithHandler(func(data interface{}) error {
+				defer func() { received <- true }()
+
+				value, ok := data.(*map[string]interface{})
+				s.assert.True(ok)
+				s.assert.Equal("pong", (*value)["ping"])
+
+				return nil
+			}),
+		)
+
+		err := messageBroker.Run()
+
+		s.assert.NoError(err)
+	}()
+
+	time.Sleep(time.Second * 3)
+
+	messageId, err := s.producer.Publish("topic-teste-dois", message, nil)
+	if err != nil {
+		received <- true
+	}
+
+	s.assert.NoError(err)
+	s.assert.NotNil(messageId)
+
+	<-received
+}
+
 func (s *MessageBrokerSubscriberTestSuite) TestFIFOSubscribe() {
 	received := make(chan bool, 1)
 
