@@ -142,7 +142,6 @@ func (s *MessageBrokerSubscriberTestSuite) TestFIFOSubscribe() {
 			grok.WithSubscriberID(subscriberID),
 			grok.WithType(reflect.TypeOf(message)),
 			grok.WithFIFO(true),
-			grok.WithDLQ(false),
 			grok.WithHandler(func(data interface{}) error {
 				defer func() { received <- true }()
 
