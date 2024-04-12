@@ -1,11 +1,11 @@
 package grok_test
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/contbank/grok"
 	"github.com/stretchr/testify/assert"
@@ -142,7 +142,7 @@ func (s *MessageBrokerSubscriberTestSuite) TestFIFOSubscribe() {
 			grok.WithTopicID(topicID),
 			grok.WithSubscriberID(subscriberID),
 			grok.WithType(reflect.TypeOf(message)),
-			grok.WithFIFO(aws.Bool(true)),
+			grok.WithFIFO(true),
 			grok.WithHandler(func(data interface{}) error {
 				defer func() { received <- true }()
 
@@ -178,4 +178,68 @@ func (s *MessageBrokerSubscriberTestSuite) TestFIFOSubscribe() {
 	s.assert.NotNil(messageId)
 
 	<-received
+}
+
+func (s *MessageBrokerSubscriberTestSuite) TestDLQSubscribe() {
+	received := make(chan bool, 1)
+	dlqReceived := make(chan bool, 1)
+
+	subscriberID := "subs"
+	topicID := "topic-teste"
+
+	message := map[string]interface{}{"ping": "pong"}
+
+	go func() {
+		messageBroker := grok.NewMessageBrokerSubscriber(
+			grok.WithSessionSQS(s.sessionSQS),
+			grok.WithSessionSNS(s.sessionSNS),
+			grok.WithTopicID(topicID),
+			grok.WithSubscriberID(subscriberID),
+			grok.WithMaxRetries(1),
+			grok.WithType(reflect.TypeOf(message)),
+			grok.WithDLQ(true),
+			grok.WithHandler(func(data interface{}) error {
+				defer func() { received <- true }()
+				return errors.New("erro para redircionar para a DLQ")
+			}),
+		)
+
+		err := messageBroker.Run()
+		s.assert.NoError(err)
+	}()
+
+	time.Sleep(time.Second * 3)
+
+	messageId, err := s.producer.Publish(topicID, message, nil)
+	if err != nil {
+		received <- true
+	}
+
+	s.assert.NoError(err)
+	s.assert.NotNil(messageId)
+
+	<-received
+
+	dlqSubscriberID := "subs_dlq"
+	go func() {
+		messageBroker := grok.NewMessageBrokerSubscriber(
+			grok.WithSessionSQS(s.sessionSQS),
+			grok.WithSubscriberID(dlqSubscriberID),
+			grok.WithMaxRetries(1),
+			grok.WithType(reflect.TypeOf(message)),
+			grok.WithDLQ(false),
+			grok.WithHandler(func(data interface{}) error {
+				defer func() { dlqReceived <- true }()
+				value, ok := data.(*map[string]interface{})
+				s.assert.True(ok)
+				s.assert.Equal("pong", (*value)["ping"])
+
+				return nil
+			}),
+		)
+
+		err := messageBroker.Run()
+		s.assert.NoError(err)
+	}()
+	<-dlqReceived
 }

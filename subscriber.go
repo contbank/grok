@@ -20,11 +20,11 @@ type MessageBrokerSubscriber struct {
 	snsSvc       *sns.SNS
 	handler      func(interface{}) error
 	subscriberID string
-	topicID      string
 	topicIDs     []string
 	handleType   reflect.Type
 	maxRetries   int
-	fifo         *bool
+	fifo         bool
+	dlq          bool
 }
 
 // MessageBrokerSubscriberOption ...
@@ -35,6 +35,8 @@ func NewMessageBrokerSubscriber(opts ...MessageBrokerSubscriberOption) *MessageB
 	subscriber := new(MessageBrokerSubscriber)
 	subscriber.maxRetries = 5
 	subscriber.topicIDs = make([]string, 0)
+	subscriber.fifo = false
+	subscriber.dlq = true
 
 	for _, opt := range opts {
 		opt(subscriber)
@@ -71,7 +73,7 @@ func WithSubscriberID(id string) MessageBrokerSubscriberOption {
 	}
 }
 
-// método WithTopicID para aceitar múltiplos IDs de tópicos
+// WithTopicID ... método WithTopicID para aceitar múltiplos IDs de tópicos
 func WithTopicID(ids ...string) MessageBrokerSubscriberOption {
 	return func(s *MessageBrokerSubscriber) {
 		s.topicIDs = append(s.topicIDs, ids...)
@@ -93,9 +95,16 @@ func WithMaxRetries(maxRetries int) MessageBrokerSubscriberOption {
 }
 
 // WithFIFO - default false
-func WithFIFO(fifo *bool) MessageBrokerSubscriberOption {
+func WithFIFO(fifo bool) MessageBrokerSubscriberOption {
 	return func(s *MessageBrokerSubscriber) {
 		s.fifo = fifo
+	}
+}
+
+// WithDLQ - default true
+func WithDLQ(dlq bool) MessageBrokerSubscriberOption {
+	return func(s *MessageBrokerSubscriber) {
+		s.dlq = dlq
 	}
 }
 
@@ -111,21 +120,34 @@ func WithFIFOAttributes(messageGroupID *string, messageDeduplicationID *string) 
 // Run ...
 func (s *MessageBrokerSubscriber) Run() error {
 
-	if len(s.topicIDs) == 0 {
-		err := NewError(404, "SUBSCRIBER_ERROR", "error in topic subscriber")
-		return err
-	}
 	var queueURL *string
-	var err error
-	for _, topicID := range s.topicIDs {
-		queueURL, err = createSubscriptionIfNotExists(s.sqsSvc, s.snsSvc, s.subscriberID, topicID, s.maxRetries, s.fifo)
 
+	if s.dlq {
+		if len(s.topicIDs) == 0 {
+			err := NewError(404, "SUBSCRIBER_ERROR", "error in topic subscriber")
+			return err
+		}
+		var err error
+		for _, topicID := range s.topicIDs {
+			queueURL, err = s.createSubscriptionIfNotExists(s.sqsSvc, s.snsSvc, s.subscriberID, topicID)
+
+			if err != nil {
+				logrus.WithError(err).
+					Errorf("error starting %s", s.subscriberID)
+				continue
+			}
+			logrus.Infof("starting consumer %s with topic %s", s.subscriberID, topicID)
+		}
+	} else {
+		dlqQueueURL, err := s.listQueuesBySubscriberID(s.sqsSvc, s.subscriberID)
 		if err != nil {
 			logrus.WithError(err).
 				Errorf("error starting %s", s.subscriberID)
-			continue
+			return err
 		}
-		logrus.Infof("starting consumer %s with topic %s", s.subscriberID, topicID)
+		queueURL = dlqQueueURL
+
+		logrus.Infof("starting dlq consumer with queue %s", s.subscriberID)
 	}
 
 	if err := s.checkMessages(s.sqsSvc, queueURL); err != nil {
@@ -134,7 +156,29 @@ func (s *MessageBrokerSubscriber) Run() error {
 	return nil
 }
 
-func createSubscriptionIfNotExists(sqsSvc *sqs.SQS, snsSvc *sns.SNS, subscriberID, topicID string, maxRetries int, fifo *bool) (*string, error) {
+func (s *MessageBrokerSubscriber) listQueuesBySubscriberID(sqsSvc *sqs.SQS, subscriberID string) (*string, error) {
+	listQueueResults, err := sqsSvc.ListQueues(&sqs.ListQueuesInput{
+		QueueNamePrefix: aws.String(subscriberID),
+	})
+
+	if err != nil {
+		logrus.WithError(err).
+			Errorf("error list queues %s", subscriberID)
+		return nil, err
+	}
+
+	var queueURL *string
+	for _, t := range listQueueResults.QueueUrls {
+		parts := strings.Split(*t, "/")
+		if strings.Compare(parts[4], subscriberID) == 0 {
+			queueURL = t
+			break
+		}
+	}
+	return queueURL, nil
+}
+
+func (s *MessageBrokerSubscriber) createSubscriptionIfNotExists(sqsSvc *sqs.SQS, snsSvc *sns.SNS, subscriberID, topicID string) (*string, error) {
 	listQueueResults, err := sqsSvc.ListQueues(&sqs.ListQueuesInput{
 		QueueNamePrefix: aws.String(subscriberID),
 	})
@@ -156,128 +200,152 @@ func createSubscriptionIfNotExists(sqsSvc *sqs.SQS, snsSvc *sns.SNS, subscriberI
 		}
 	}
 
-	if queueURL == nil {
-		sqsName := subscriberID
-		sqsAttributes := map[string]*string{
-			sqs.QueueAttributeNameReceiveMessageWaitTimeSeconds: aws.String("20"),
+	if s.dlq {
+
+		if queueURL == nil {
+			sqsName := subscriberID
+			sqsAttributes := map[string]*string{
+				sqs.QueueAttributeNameReceiveMessageWaitTimeSeconds: aws.String("20"),
+				//sqs.MessageSystemAttributeNameApproximateReceiveCount: aws.String("true"),
+			}
+
+			if s.fifo {
+				stringFifo := strconv.FormatBool(s.fifo)
+				sqsAttributes[sqs.QueueAttributeNameFifoQueue] = &stringFifo
+				sqsAttributes[sqs.QueueAttributeNameContentBasedDeduplication] = &stringFifo
+				sqsName = fmt.Sprintf("%s.fifo", sqsName)
+			}
+
+			resp, err := sqsSvc.CreateQueue(&sqs.CreateQueueInput{
+				QueueName:  aws.String(sqsName),
+				Attributes: sqsAttributes,
+			})
+
+			if err != nil {
+				logrus.WithError(err).
+					Errorf("error creating queue %s", subscriberID)
+				return nil, err
+			}
+
+			queueURL = resp.QueueUrl
+
 		}
 
-		if fifo != nil && *fifo {
-			stringFifo := strconv.FormatBool(*fifo)
-			sqsAttributes[sqs.QueueAttributeNameFifoQueue] = &stringFifo
-			sqsAttributes[sqs.QueueAttributeNameContentBasedDeduplication] = &stringFifo
-			sqsName = fmt.Sprintf("%s.fifo", sqsName)
+		for _, t := range listQueueResults.QueueUrls {
+			parts := strings.Split(*t, "/")
+			if strings.Compare(parts[4], fmt.Sprintf("%s_dlq", subscriberID)) == 0 {
+				queueDlqURL = t
+				break
+			}
 		}
 
-		resp, err := sqsSvc.CreateQueue(&sqs.CreateQueueInput{
-			QueueName:  aws.String(sqsName),
-			Attributes: sqsAttributes,
+		if queueDlqURL == nil && s.dlq {
+
+			dlqName := fmt.Sprintf("%s_dlq", subscriberID)
+			sqsDlqAttributes := map[string]*string{
+				sqs.QueueAttributeNameReceiveMessageWaitTimeSeconds: aws.String("20"),
+			}
+
+			if s.fifo {
+				stringFifo := strconv.FormatBool(s.fifo)
+				sqsDlqAttributes[sqs.QueueAttributeNameFifoQueue] = &stringFifo
+				sqsDlqAttributes[sqs.QueueAttributeNameContentBasedDeduplication] = &stringFifo
+				dlqName = fmt.Sprintf("%s.fifo", dlqName)
+			}
+
+			respdlq, err := sqsSvc.CreateQueue(&sqs.CreateQueueInput{
+				QueueName:  &dlqName,
+				Attributes: sqsDlqAttributes,
+			})
+
+			if err != nil {
+				logrus.WithError(err).
+					Errorf("error creating queue dlq %s", subscriberID)
+				return nil, err
+			}
+
+			queueDlqURL = respdlq.QueueUrl
+		}
+
+		queueARN := s.convertQueueURLToARN(*queueURL)
+		queueDlqARN := s.convertQueueURLToARN(*queueDlqURL)
+
+		var attributes = make(map[string]string)
+		if s.fifo {
+			attributes["Fifo"] = strconv.FormatBool(s.fifo)
+		}
+
+		topicArn, err := createTopicIfNotExists(snsSvc, topicID, attributes)
+
+		if err != nil {
+			logrus.WithError(err).
+				Errorf("error creating topic %s", topicID)
+			return nil, err
+		}
+
+		_, err = snsSvc.Subscribe(&sns.SubscribeInput{
+			TopicArn: topicArn,
+			Protocol: aws.String("sqs"),
+			Endpoint: &queueARN,
 		})
 
 		if err != nil {
 			logrus.WithError(err).
-				Errorf("error creating queue %s", subscriberID)
+				Errorf("error subscribe topic %s", topicID)
 			return nil, err
 		}
 
-		queueURL = resp.QueueUrl
-
-	}
-
-	for _, t := range listQueueResults.QueueUrls {
-		parts := strings.Split(*t, "/")
-		if strings.Compare(parts[4], fmt.Sprintf("%s_dlq", subscriberID)) == 0 {
-			queueDlqURL = t
-			break
-		}
-	}
-
-	if queueDlqURL == nil {
-
-		dlqName := fmt.Sprintf("%s_dlq", subscriberID)
-		sqsDlqAttributes := map[string]*string{
-			sqs.QueueAttributeNameReceiveMessageWaitTimeSeconds: aws.String("20"),
+		policyContentMap := map[string]interface{}{
+			"Version": "2012-10-17",
+			"Id":      queueARN + "/SQSDefaultPolicy",
+			"Statement": []map[string]interface{}{
+				{
+					"Sid":       "Sid1580665629194",
+					"Effect":    "Allow",
+					"Principal": map[string]string{"AWS": "*"},
+					"Action":    "SQS:SendMessage",
+					"Resource":  queueARN,
+					"Condition": map[string]map[string]string{
+						"ArnEquals": {"aws:SourceArn": *topicArn},
+					},
+				},
+			},
 		}
 
-		if fifo != nil && *fifo {
-			stringFifo := strconv.FormatBool(*fifo)
-			sqsDlqAttributes[sqs.QueueAttributeNameFifoQueue] = &stringFifo
-			sqsDlqAttributes[sqs.QueueAttributeNameContentBasedDeduplication] = &stringFifo
-			dlqName = fmt.Sprintf("%s.fifo", dlqName)
+		policyContent, err := json.Marshal(policyContentMap)
+		if err != nil {
+			logrus.WithError(err).Errorf("error marshal policy %s", subscriberID)
+			return nil, err
+		}
+		policyContentString := string(policyContent)
+
+		policy := map[string]string{
+			"deadLetterTargetArn": queueDlqARN,
+			"maxReceiveCount":     strconv.Itoa(s.maxRetries),
 		}
 
-		respdlq, err := sqsSvc.CreateQueue(&sqs.CreateQueueInput{
-			QueueName:  &dlqName,
-			Attributes: sqsDlqAttributes,
-		})
-
+		redrivePolicyContent, err := json.Marshal(policy)
 		if err != nil {
 			logrus.WithError(err).
-				Errorf("error creating queue dlq %s", subscriberID)
+				Errorf("error marshal redrive policy %s", subscriberID)
 			return nil, err
 		}
 
-		queueDlqURL = respdlq.QueueUrl
-	}
+		setQueueAttrInput := sqs.SetQueueAttributesInput{
+			QueueUrl: queueURL,
+			Attributes: map[string]*string{
+				sqs.QueueAttributeNamePolicy:                        aws.String(policyContentString),
+				sqs.QueueAttributeNameRedrivePolicy:                 aws.String(string(redrivePolicyContent)),
+				sqs.QueueAttributeNameReceiveMessageWaitTimeSeconds: aws.String("20"),
+			},
+		}
 
-	queueARN := convertQueueURLToARN(*queueURL)
-	queueDlqARN := convertQueueURLToARN(*queueDlqURL)
-
-	var attributes = make(map[string]string)
-	if fifo != nil && *fifo {
-		attributes["Fifo"] = strconv.FormatBool(*fifo)
-	}
-
-	topicArn, err := createTopicIfNotExists(snsSvc, topicID, attributes)
-
-	if err != nil {
-		logrus.WithError(err).
-			Errorf("error creating topic %s", topicID)
-		return nil, err
-	}
-
-	_, err = snsSvc.Subscribe(&sns.SubscribeInput{
-		TopicArn: topicArn,
-		Protocol: aws.String("sqs"),
-		Endpoint: &queueARN,
-	})
-
-	if err != nil {
-		logrus.WithError(err).
-			Errorf("error subscribe topic %s", topicID)
-		return nil, err
-	}
-
-	policyContent := "{\"Version\": \"2012-10-17\",  \"Id\": \"" + queueARN + "/SQSDefaultPolicy\",  \"Statement\": [    {     \"Sid\": \"Sid1580665629194\",      \"Effect\": \"Allow\",      \"Principal\": {        \"AWS\": \"*\"      },      \"Action\": \"SQS:SendMessage\",      \"Resource\": \"" + queueARN + "\",      \"Condition\": {        \"ArnEquals\": {         \"aws:SourceArn\": \"" + *topicArn + "\"        }      }    }  ]}"
-
-	policy := map[string]string{
-		"deadLetterTargetArn": queueDlqARN,
-		"maxReceiveCount":     strconv.Itoa(maxRetries),
-	}
-
-	redrivePolicyContent, err := json.Marshal(policy)
-
-	if err != nil {
-		logrus.WithError(err).
-			Errorf("error marshal redrive policy %s", subscriberID)
-		return nil, err
-	}
-
-	setQueueAttrInput := sqs.SetQueueAttributesInput{
-		QueueUrl: queueURL,
-		Attributes: map[string]*string{
-			sqs.QueueAttributeNamePolicy:                        aws.String(policyContent),
-			sqs.QueueAttributeNameRedrivePolicy:                 aws.String(string(redrivePolicyContent)),
-			sqs.QueueAttributeNameReceiveMessageWaitTimeSeconds: aws.String("20"),
-		},
-	}
-
-	_, err = sqsSvc.SetQueueAttributes(&setQueueAttrInput)
-
-	if err != nil {
-		logrus.WithError(err).
-			Errorf("error set attributes policy queue %s", subscriberID)
-		return nil, err
+		_, err = sqsSvc.SetQueueAttributes(&setQueueAttrInput)
+		if err != nil {
+			logrus.WithError(err).
+				Errorf("error set attributes policy queue %s", subscriberID)
+			return nil, err
+		}
 	}
 
 	return queueURL, nil
@@ -347,13 +415,72 @@ func (s *MessageBrokerSubscriber) checkMessages(sqsSvc *sqs.SQS, queueURL *strin
 
 }
 
-func convertQueueURLToARN(inputURL string) string {
-	var queueARN string
-	if strings.Contains(inputURL, "localhost") {
-		queueARN = strings.Replace(strings.Replace(strings.Replace(inputURL, "http://", "arn:aws:sqs:", -1), "localhost:4566", "us-west-2", -1), "/", ":", -1)
-	} else {
-		queueARN = strings.Replace(strings.Replace(strings.Replace(inputURL, "https://sqs.", "arn:aws:sqs:", -1), ".amazonaws.com/", ":", -1), "/", ":", -1)
+/*
+func (s *MessageBrokerSubscriber) parseMessagePayload(message *sqs.Message) (map[string]interface{}, error) {
+	var payload map[string]interface{}
+
+	err := json.Unmarshal([]byte(*message.Body), &payload)
+	if err != nil {
+		return nil, err
 	}
 
-	return queueARN
+	return payload, nil
+}
+
+func (s *MessageBrokerSubscriber) moveToDeadLetterQueue(sqsSvc *sqs.SQS, queueURL *string,
+	message *sqs.Message) (*sqs.DeleteMessageBatchOutput, error) {
+	deleteMessageRequest := &sqs.DeleteMessageBatchInput{
+		QueueUrl: queueURL,
+		Entries: []*sqs.DeleteMessageBatchRequestEntry{
+			{
+				Id:            message.MessageId,
+				ReceiptHandle: message.ReceiptHandle,
+			},
+		},
+	}
+
+	return sqsSvc.DeleteMessageBatch(deleteMessageRequest)
+}
+
+func (s *MessageBrokerSubscriber) deleteMessage(sqsSvc *sqs.SQS, queueURL *string, receiptHandle *string) error {
+	deleteMessageRequest := &sqs.DeleteMessageInput{
+		QueueUrl:      queueURL,
+		ReceiptHandle: receiptHandle,
+	}
+
+	_, err := sqsSvc.DeleteMessage(deleteMessageRequest)
+	return err
+}
+
+func (s *MessageBrokerSubscriber) getApproximateReceiveCount(message *sqs.Message) (int, error) {
+	receiveCountStr, ok := message.Attributes["ApproximateReceiveCount"]
+	if !ok {
+		err := errors.New("error getting ApproximateReceiveCount attribute")
+		logrus.WithError(err).
+			Errorf("error getting ApproximateReceiveCount attribute.")
+		return 0, err
+	}
+
+	receiveCount, err := strconv.Atoi(*receiveCountStr)
+	if err != nil {
+		return 0, err
+	}
+
+	return receiveCount, nil
+}*/
+
+func (s *MessageBrokerSubscriber) convertQueueURLToARN(inputURL string) string {
+	const sqsPrefix = "http://"
+	const sqsARNPrefix = "arn:aws:sqs:"
+	const localStackEndpoint = "localhost:4566"
+
+	if strings.Contains(inputURL, localStackEndpoint) {
+		inputURL = strings.Replace(inputURL, sqsPrefix, sqsARNPrefix, 1)
+		inputURL = strings.Replace(inputURL, localStackEndpoint, "us-west-2", 1)
+	} else {
+		inputURL = strings.Replace(inputURL, "https://sqs.", sqsARNPrefix, 1)
+		inputURL = strings.Replace(inputURL, ".amazonaws.com/", ":", 1)
+	}
+
+	return strings.Replace(inputURL, "/", ":", -1)
 }
