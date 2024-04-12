@@ -205,8 +205,8 @@ func (s *MessageBrokerSubscriber) createSubscriptionIfNotExists(sqsSvc *sqs.SQS,
 		if queueURL == nil {
 			sqsName := subscriberID
 			sqsAttributes := map[string]*string{
-				sqs.QueueAttributeNameReceiveMessageWaitTimeSeconds:   aws.String("20"),
-				sqs.MessageSystemAttributeNameApproximateReceiveCount: aws.String("true"),
+				sqs.QueueAttributeNameReceiveMessageWaitTimeSeconds: aws.String("20"),
+				//sqs.MessageSystemAttributeNameApproximateReceiveCount: aws.String("true"),
 			}
 
 			if s.fifo {

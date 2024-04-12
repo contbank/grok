@@ -1,6 +1,7 @@
 package grok_test
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 	"time"
@@ -179,138 +180,66 @@ func (s *MessageBrokerSubscriberTestSuite) TestFIFOSubscribe() {
 	<-received
 }
 
-func (s *MessageBrokerSubscriberTestSuite) TestSubscribeWithDLQ() {
-	received := make(chan bool, 2) // Alterado para receber dois sinais
+func (s *MessageBrokerSubscriberTestSuite) TestDLQSubscribe() {
+	received := make(chan bool, 1)
+	dlqReceived := make(chan bool, 1)
 
-	subscriberID := "subsc"
+	subscriberID := "subs"
+	topicID := "topic-teste"
 
 	message := map[string]interface{}{"ping": "pong"}
 
-	topics := []string{"topic-teste", "topic-teste-dois"} // Tópicos a serem inscritos
-
-	messageBroker := grok.NewMessageBrokerSubscriber(
-		grok.WithSessionSQS(s.sessionSQS),
-		grok.WithSessionSNS(s.sessionSNS),
-		grok.WithSubscriberID(subscriberID),
-		grok.WithType(reflect.TypeOf(message)),
-		grok.WithTopicID(topics...), // Usando os tópicos especificados
-		grok.WithDLQ(true),
-		grok.WithHandler(func(data interface{}) error {
-			defer func() { received <- true }()
-
-			value, ok := data.(*map[string]interface{})
-			s.assert.True(ok)
-			s.assert.Equal("pong", (*value)["ping"])
-
-			return nil
-		}),
-	)
-
 	go func() {
+		messageBroker := grok.NewMessageBrokerSubscriber(
+			grok.WithSessionSQS(s.sessionSQS),
+			grok.WithSessionSNS(s.sessionSNS),
+			grok.WithTopicID(topicID),
+			grok.WithSubscriberID(subscriberID),
+			grok.WithMaxRetries(1),
+			grok.WithType(reflect.TypeOf(message)),
+			grok.WithDLQ(true),
+			grok.WithHandler(func(data interface{}) error {
+				defer func() { received <- true }()
+				return errors.New("erro para redircionar para a DLQ")
+			}),
+		)
+
 		err := messageBroker.Run()
 		s.assert.NoError(err)
 	}()
 
 	time.Sleep(time.Second * 3)
 
-	// Enviando mensagens para os tópicos inscritos
-	for _, topic := range topics {
-		messageId, err := s.producer.Publish(topic, message, nil)
-		if err != nil {
-			received <- true
-		}
-		s.assert.NoError(err)
-		s.assert.NotNil(messageId)
+	messageId, err := s.producer.Publish(topicID, message, nil)
+	if err != nil {
+		received <- true
 	}
 
-	for i := 0; i < len(topics); i++ {
-		<-received
-	}
-}
+	s.assert.NoError(err)
+	s.assert.NotNil(messageId)
 
-func (s *MessageBrokerSubscriberTestSuite) TestSubscribeWithoutDLQ() {
-	received := make(chan bool, 2) // Alterado para receber dois sinais
+	<-received
 
-	subscriberID := "subsc"
-
-	message := map[string]interface{}{"ping": "pong"}
-
-	topics := []string{"topic-teste", "topic-teste-dois"} // Tópicos a serem inscritos
-
-	messageBroker := grok.NewMessageBrokerSubscriber(
-		grok.WithSessionSQS(s.sessionSQS),
-		grok.WithSessionSNS(s.sessionSNS),
-		grok.WithSubscriberID(subscriberID),
-		grok.WithType(reflect.TypeOf(message)),
-		grok.WithTopicID(topics...), // Usando os tópicos especificados
-		grok.WithDLQ(true),
-		grok.WithHandler(func(data interface{}) error {
-			defer func() { received <- true }()
-
-			value, ok := data.(*map[string]interface{})
-			s.assert.True(ok)
-			s.assert.Equal("pong", (*value)["ping"])
-
-			return nil
-		}),
-	)
-
+	dlqSubscriberID := "subs_dlq"
 	go func() {
+		messageBroker := grok.NewMessageBrokerSubscriber(
+			grok.WithSessionSQS(s.sessionSQS),
+			grok.WithSubscriberID(dlqSubscriberID),
+			grok.WithMaxRetries(1),
+			grok.WithType(reflect.TypeOf(message)),
+			grok.WithDLQ(false),
+			grok.WithHandler(func(data interface{}) error {
+				defer func() { dlqReceived <- true }()
+				value, ok := data.(*map[string]interface{})
+				s.assert.True(ok)
+				s.assert.Equal("pong", (*value)["ping"])
+
+				return nil
+			}),
+		)
+
 		err := messageBroker.Run()
 		s.assert.NoError(err)
 	}()
-
-	time.Sleep(time.Second * 3)
-
-	// Enviando mensagens para os tópicos inscritos
-	for _, topic := range topics {
-		messageId, err := s.producer.Publish(topic, message, nil)
-		if err != nil {
-			received <- true
-		}
-		s.assert.NoError(err)
-		s.assert.NotNil(messageId)
-	}
-
-	for i := 0; i < len(topics); i++ {
-		<-received
-	}
-
-	dlqSubscriberId := "subsc_dlq"
-	messageBrokerDLQ := grok.NewMessageBrokerSubscriber(
-		grok.WithSessionSQS(s.sessionSQS),
-		grok.WithSubscriberID(dlqSubscriberId),
-		grok.WithType(reflect.TypeOf(message)),
-		grok.WithDLQ(false),
-		grok.WithHandler(func(data interface{}) error {
-			defer func() { received <- true }()
-
-			value, ok := data.(*map[string]interface{})
-			s.assert.True(ok)
-			s.assert.Equal("pong", (*value)["ping"])
-
-			return nil
-		}),
-	)
-
-	go func() {
-		err := messageBrokerDLQ.Run()
-		s.assert.NoError(err)
-	}()
-
-	time.Sleep(time.Second * 3)
-
-	// Enviando mensagens para os tópicos inscritos
-	for _, topic := range topics {
-		messageId, err := s.producer.Publish(topic, message, nil)
-		if err != nil {
-			received <- true
-		}
-		s.assert.NoError(err)
-		s.assert.NotNil(messageId)
-	}
-
-	for i := 0; i < len(topics); i++ {
-		<-received
-	}
+	<-dlqReceived
 }
