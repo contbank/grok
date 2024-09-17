@@ -64,7 +64,6 @@ func TokenScopesRequired(scopes []string) gin.HandlerFunc {
 			}
 			if !internalValid {
 				valid = false
-				return
 			} else if pos == len(scopes)-1 {
 				valid = true
 			}
