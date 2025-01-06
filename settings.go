@@ -25,6 +25,7 @@ type APISettings struct {
 	Swagger                    string                      `yaml:"swagger"`
 	Auth                       *APIAuth                    `yaml:"auth"`
 	InternalAuth               *InternalAuth               `yaml:"internal_auth"`
+	BaasProvider               *BaasProviderSettings       `yaml:"baas_provider"`
 	TransactionalTokenSettings *TransactionalTokenSettings `yaml:"internal_transactional_token"`
 	MaxBodySize                int64                       `yaml:"max_body_size"`
 }
@@ -99,6 +100,13 @@ type InternalAuth struct {
 	URL     *string   `yaml:"url"` // deprecated
 	URLs    []*string `yaml:"urls"`
 	Success *bool     `yaml:"success"`
+}
+
+// BaasProviderSettings ...
+type BaasProviderSettings struct {
+	Fake    bool    `yaml:"fake"`
+	URL     *string `yaml:"url"`
+	Success *bool   `yaml:"success"`
 }
 
 type TransactionalTokenSettings struct {
