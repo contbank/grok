@@ -13,20 +13,31 @@ const (
 	// X_BAAS_PROVIDER ...
 	X_BAAS_PROVIDER string = "X-Baas-Provider"
 	// DEFAULT_PROVIDER ...
-	DEFAULT_PROVIDER string = "BANKLY"
+	DEFAULT_PROVIDER string = "CELCOIN"
 	// BANKLY_PROVIDER ...
 	BANKLY_PROVIDER string = "BANKLY"
 	// CELCOIN_PROVIDER ...
 	CELCOIN_PROVIDER string = "CELCOIN"
 )
 
+// BaasProvider ...
 type BaasProvider interface {
+	Identify() gin.HandlerFunc
+}
+
+// BaasProviderIntra ...
+type BaasProviderIntra interface {
 	Identify() gin.HandlerFunc
 }
 
 // baasProvider ...
 type baasProvider struct {
 	settings *BaasProviderSettings
+}
+
+// baasProviderIntra ...
+type baasProviderIntra struct {
+	settings *BaasProviderIntraSettings
 }
 
 // NewBaasProvider ...
@@ -46,6 +57,25 @@ func CreateBaasProvider(settings *BaasProviderSettings) BaasProvider {
 		return NewFakeBaasProvider(success)
 	}
 	return NewBaasProvider(settings)
+}
+
+// NewBaasProviderIntra ...
+func NewBaasProviderIntra(settings *BaasProviderIntraSettings) BaasProviderIntra {
+	return &baasProviderIntra{
+		settings: settings,
+	}
+}
+
+// CreateBaasProviderIntra ...
+func CreateBaasProviderIntra(settings *BaasProviderIntraSettings) BaasProviderIntra {
+	if settings.Fake {
+		success := true
+		if settings.Success != nil {
+			success = *settings.Success
+		}
+		return NewFakeBaasProvider(success)
+	}
+	return NewBaasProviderIntra(settings)
 }
 
 // Identify ...
@@ -74,8 +104,79 @@ func (p *baasProvider) Identify() gin.HandlerFunc {
 	}
 }
 
+// Identify ...
+func (p *baasProviderIntra) Identify() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if p.settings == nil {
+			c.AbortWithStatus(http.StatusForbidden)
+			return
+		}
+
+		// current identity is required
+		currentIdentity := c.Request.Header.Get(X_CURRENT_IDENTITY)
+		if len(currentIdentity) == 0 {
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+
+		url := p.settings.URL
+		jwt := c.Request.Header.Get("authorization")
+
+		baasProvider := p.getBaasProviderIntraForIdentifier(&currentIdentity, url, &jwt)
+
+		c.Set(X_BAAS_PROVIDER, *baasProvider)
+
+		c.Next()
+	}
+}
+
 // getBaasProviderForIdentifier ...
 func (p *baasProvider) getBaasProviderForIdentifier(identifier *string, endpoint *string, jwt *string) *string {
+
+	baasProvider := DEFAULT_PROVIDER
+
+	u, err := url.Parse(*endpoint)
+	if err != nil {
+		return &baasProvider
+	}
+
+	u.Path = path.Join(u.Path, *identifier)
+	newEndpoint := u.String()
+
+	req, err := http.NewRequest("GET", newEndpoint, nil)
+	if err != nil {
+		return &baasProvider
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", *jwt)
+	req.Header.Set(X_CURRENT_IDENTITY, *identifier)
+
+	client := http.Client{}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return &baasProvider
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return &baasProvider
+	}
+
+	response := struct {
+		BaasProvider string `json:"baas_provider,omitempty"`
+	}{}
+
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return &baasProvider
+	}
+	return &response.BaasProvider
+}
+
+// getBaasProviderIntraForIdentifier ...
+func (p *baasProviderIntra) getBaasProviderIntraForIdentifier(identifier *string, endpoint *string, jwt *string) *string {
 
 	baasProvider := DEFAULT_PROVIDER
 
