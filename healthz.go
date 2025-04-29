@@ -4,12 +4,20 @@ import (
 	"context"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"go.mongodb.org/mongo-driver/mongo/readpref"
+)
+
+var (
+	mongoPingCache     error
+	mongoPingCacheTime time.Time
+	mongoPingMutex     sync.Mutex
+	cacheTTL           = 30 * time.Second // Tempo de vida do cache
 )
 
 // Healthz ...
@@ -25,10 +33,23 @@ type HealtzOption func(*Healthz)
 func WithMongo() HealtzOption {
 	return func(h *Healthz) {
 		h.checks = append(h.checks, func(healthz *Healthz) error {
+			mongoPingMutex.Lock()
+			defer mongoPingMutex.Unlock()
+
+			// Verifica se o cache ainda é válido
+			if time.Since(mongoPingCacheTime) < cacheTTL {
+				return mongoPingCache
+			}
+
+			// Realiza o ping e atualiza o cache
 			client := NewMongoConnection(h.settings.Mongo.ConnectionString, h.settings.Mongo.CaFilePath)
 			defer client.Disconnect(context.Background())
 
-			return client.Ping(context.Background(), readpref.Primary())
+			err := client.Ping(context.Background(), readpref.Primary())
+			mongoPingCache = err
+			mongoPingCacheTime = time.Now()
+
+			return err
 		})
 	}
 }
