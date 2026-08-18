@@ -11,15 +11,25 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sns"
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 // MessageBrokerProducer ...
 type MessageBrokerProducer struct {
 	snsSvc *sns.SNS
+
+	// Presentes só quando NewMessageBrokerProducer detecta sessão em modo RabbitMQ (ver rabbitmq.go).
+	amqpConn    *amqp.Connection
+	amqpChannel *amqp.Channel
 }
 
 // NewMessageBrokerProducer ...
 func NewMessageBrokerProducer(s *session.Session) *MessageBrokerProducer {
+	if endpoint, ok := isAMQPEndpoint(s); ok {
+		conn, ch := amqpDial(endpoint)
+		return &MessageBrokerProducer{amqpConn: conn, amqpChannel: ch}
+	}
+
 	snsSvc := sns.New(s)
 	return &MessageBrokerProducer{snsSvc: snsSvc}
 }
@@ -56,6 +66,10 @@ func (p *MessageBrokerProducer) PublishWithAttributes(topicID string, data inter
 
 	if err != nil {
 		return "", err
+	}
+
+	if p.amqpChannel != nil {
+		return p.publishAMQP(topicID, body, attributes)
 	}
 
 	topic, err := createTopicIfNotExists(p.snsSvc, topicID, attributes)
@@ -105,6 +119,41 @@ func (p *MessageBrokerProducer) PublishWithAttributes(topicID string, data inter
 
 	return *output.MessageId, nil
 
+}
+
+// publishAMQP é o equivalente RabbitMQ de PublishWithAttributes: exchange fanout por tópico (auto-declarado,
+// igual ao createTopicIfNotExists do SNS acima), mensagem persistida em disco (DeliveryMode: Persistent)
+// pra não perder mensagem se o broker reiniciar.
+//
+// Limitação conhecida e documentada (ver /doc/grok-migracao.md §2.1, item 4): os atributos FIFO do SNS
+// (MessageGroupID/MessageDeduplicationID) não têm equivalente 1:1 no RabbitMQ e são ignorados aqui — a
+// ordem dentro de uma única fila já é garantida nativamente pelo RabbitMQ, mas deduplicação por grupo não
+// é implementada. Se algum serviço migrado depender de deduplicação FIFO de verdade, isso precisa de
+// desenho específico antes de migrar aquele fluxo.
+func (p *MessageBrokerProducer) publishAMQP(topicID string, body []byte, attributes map[string]string) (string, error) {
+	if err := amqpDeclareTopicExchange(p.amqpChannel, topicID); err != nil {
+		return "", err
+	}
+
+	messageID := amqpNewMessageID()
+
+	err := p.amqpChannel.Publish(
+		topicID, // exchange
+		"",      // routing key (fanout ignora)
+		false,   // mandatory
+		false,   // immediate
+		amqp.Publishing{
+			ContentType:  "application/json",
+			DeliveryMode: amqp.Persistent,
+			MessageId:    messageID,
+			Body:         body,
+		},
+	)
+	if err != nil {
+		return "", err
+	}
+
+	return messageID, nil
 }
 
 func createTopicIfNotExists(snsSvc *sns.SNS, id string, attributes map[string]string) (*string, error) {
