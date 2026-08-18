@@ -70,7 +70,15 @@ type AWSCredentials struct {
 	Endpoint string `yaml:"endpoint"`
 	Region   string `yaml:"region"`
 	Profile  string `yaml:"profile"`
+	// Broker é opcional e vazio por padrão (comportamento SNS/SQS de sempre, sem mudança pra quem não
+	// setar isso no config.yaml). Setar como "rabbitmq" faz CreateSession/NewMessageBrokerProducer/
+	// NewMessageBrokerSubscriber usarem RabbitMQ em vez de SNS/SQS, lendo a URL do broker (ex.:
+	// amqp://usuario:senha@host:5672/) do campo Endpoint acima. Ver /doc/grok-migracao.md.
+	Broker string `yaml:"broker"`
 }
+
+// BrokerRabbitMQ é o valor de AWSCredentials.Broker que ativa o backend RabbitMQ.
+const BrokerRabbitMQ = "rabbitmq"
 
 type KMSCredentials struct {
 	Aws AWSCredentials `yaml:",inline"`
