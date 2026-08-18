@@ -2,6 +2,7 @@ package grok_test
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -14,11 +15,13 @@ import (
 
 type MessageBrokerSubscriberTestSuite struct {
 	suite.Suite
-	assert     *assert.Assertions
-	settings   *grok.Settings
-	sessionSQS *session.Session
-	sessionSNS *session.Session
-	producer   *grok.MessageBrokerProducer
+	assert       *assert.Assertions
+	settings     *grok.Settings
+	sessionSQS   *session.Session
+	sessionSNS   *session.Session
+	producer     *grok.MessageBrokerProducer
+	amqpSession  *session.Session
+	amqpProducer *grok.MessageBrokerProducer
 }
 
 func TestMessageBrokerSubscriberTestSuite(t *testing.T) {
@@ -33,6 +36,14 @@ func (s *MessageBrokerSubscriberTestSuite) SetupTest() {
 	s.sessionSNS = grok.CreateSession(s.settings.AWS.SNS)
 	s.producer = grok.NewMessageBrokerProducer(s.sessionSNS)
 
+	// Backend RabbitMQ novo (ver rabbitmq.go/rabbitmq_subscriber.go) — requer RabbitMQ local em
+	// amqp://guest:guest@localhost:5672/, parte da migração AWS→Hetzner (/doc/grok-migracao.md §2.1).
+	s.amqpSession = grok.CreateSession(&grok.AWSCredentials{
+		Broker:   grok.BrokerRabbitMQ,
+		Endpoint: "amqp://guest:guest@localhost:5672/",
+		Region:   "us-west-2",
+	})
+	s.amqpProducer = grok.NewMessageBrokerProducer(s.amqpSession)
 }
 
 func (s *MessageBrokerSubscriberTestSuite) TestSubscribe() {
@@ -224,6 +235,120 @@ func (s *MessageBrokerSubscriberTestSuite) TestDLQSubscribe() {
 	go func() {
 		messageBroker := grok.NewMessageBrokerSubscriber(
 			grok.WithSessionSQS(s.sessionSQS),
+			grok.WithSubscriberID(dlqSubscriberID),
+			grok.WithMaxRetries(1),
+			grok.WithType(reflect.TypeOf(message)),
+			grok.WithDLQ(false),
+			grok.WithHandler(func(data interface{}) error {
+				defer func() { dlqReceived <- true }()
+				value, ok := data.(*map[string]interface{})
+				s.assert.True(ok)
+				s.assert.Equal("pong", (*value)["ping"])
+
+				return nil
+			}),
+		)
+
+		err := messageBroker.Run()
+		s.assert.NoError(err)
+	}()
+	<-dlqReceived
+}
+
+// TestSubscribeAMQP é o equivalente RabbitMQ de TestSubscribe — mesma API pública
+// (NewMessageBrokerSubscriber, WithSessionSQS/SNS, WithTopicID, WithHandler...), backend diferente por
+// dentro (detectado automaticamente pela sessão vinda de grok.CreateSession com Broker: rabbitmq).
+func (s *MessageBrokerSubscriberTestSuite) TestSubscribeAMQP() {
+	received := make(chan bool, 1)
+
+	subscriberID := "subs-amqp"
+	topicID := "topic-teste-amqp"
+
+	message := map[string]interface{}{"ping": "pong"}
+
+	go func() {
+		messageBroker := grok.NewMessageBrokerSubscriber(
+			grok.WithSessionSQS(s.amqpSession),
+			grok.WithSessionSNS(s.amqpSession),
+			grok.WithTopicID(topicID),
+			grok.WithSubscriberID(subscriberID),
+			grok.WithType(reflect.TypeOf(message)),
+			grok.WithHandler(func(data interface{}) error {
+				defer func() { received <- true }()
+
+				value, ok := data.(*map[string]interface{})
+				s.assert.True(ok)
+				s.assert.Equal("pong", (*value)["ping"])
+
+				return nil
+			}),
+		)
+
+		err := messageBroker.Run()
+
+		s.assert.NoError(err)
+	}()
+
+	time.Sleep(time.Second * 1)
+
+	messageId, err := s.amqpProducer.Publish(topicID, message, nil)
+	if err != nil {
+		received <- true
+	}
+
+	s.assert.NoError(err)
+	s.assert.NotNil(messageId)
+
+	<-received
+}
+
+// TestDLQSubscribeAMQP é o equivalente RabbitMQ de TestDLQSubscribe: com WithMaxRetries(1), a primeira
+// falha do handler já precisa mandar a mensagem pra fila "_dlq" (via dead-letter-exchange nativo do
+// RabbitMQ), sem depender de nenhuma contagem de reentrega da AWS.
+func (s *MessageBrokerSubscriberTestSuite) TestDLQSubscribeAMQP() {
+	received := make(chan bool, 1)
+	dlqReceived := make(chan bool, 1)
+
+	subscriberID := "subs-amqp-dlq-origem"
+	topicID := "topic-teste-amqp-dlq"
+
+	message := map[string]interface{}{"ping": "pong"}
+
+	go func() {
+		messageBroker := grok.NewMessageBrokerSubscriber(
+			grok.WithSessionSQS(s.amqpSession),
+			grok.WithSessionSNS(s.amqpSession),
+			grok.WithTopicID(topicID),
+			grok.WithSubscriberID(subscriberID),
+			grok.WithMaxRetries(1),
+			grok.WithType(reflect.TypeOf(message)),
+			grok.WithDLQ(true),
+			grok.WithHandler(func(data interface{}) error {
+				defer func() { received <- true }()
+				return errors.New("erro para redirecionar para a DLQ")
+			}),
+		)
+
+		err := messageBroker.Run()
+		s.assert.NoError(err)
+	}()
+
+	time.Sleep(time.Second * 1)
+
+	messageId, err := s.amqpProducer.Publish(topicID, message, nil)
+	if err != nil {
+		received <- true
+	}
+
+	s.assert.NoError(err)
+	s.assert.NotNil(messageId)
+
+	<-received
+
+	dlqSubscriberID := fmt.Sprintf("%s_dlq", subscriberID)
+	go func() {
+		messageBroker := grok.NewMessageBrokerSubscriber(
+			grok.WithSessionSQS(s.amqpSession),
 			grok.WithSubscriberID(dlqSubscriberID),
 			grok.WithMaxRetries(1),
 			grok.WithType(reflect.TypeOf(message)),
