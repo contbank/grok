@@ -70,15 +70,22 @@ type AWSCredentials struct {
 	Endpoint string `yaml:"endpoint"`
 	Region   string `yaml:"region"`
 	Profile  string `yaml:"profile"`
-	// Broker é opcional e vazio por padrão (comportamento SNS/SQS de sempre, sem mudança pra quem não
-	// setar isso no config.yaml). Setar como "rabbitmq" faz CreateSession/NewMessageBrokerProducer/
-	// NewMessageBrokerSubscriber usarem RabbitMQ em vez de SNS/SQS, lendo a URL do broker (ex.:
-	// amqp://usuario:senha@host:5672/) do campo Endpoint acima. Ver /doc/grok-migracao.md.
+	// Broker é opcional e vazio por padrão (comportamento SNS/SQS/Secrets Manager de sempre, sem mudança
+	// pra quem não setar isso no config.yaml).
+	//   - "rabbitmq" faz CreateSession/NewMessageBrokerProducer/NewMessageBrokerSubscriber usarem
+	//     RabbitMQ em vez de SNS/SQS, lendo a URL do broker (ex.: amqp://usuario:senha@host:5672/) do
+	//     campo Endpoint acima.
+	//   - "kubernetes" faz LoadSecretsManager ler de variável de ambiente (Secret do Kubernetes, via
+	//     envFrom no Deployment) em vez de chamar a AWS Secrets Manager — ver secrets_manager.go.
+	// Ver /doc/grok-migracao.md.
 	Broker string `yaml:"broker"`
 }
 
-// BrokerRabbitMQ é o valor de AWSCredentials.Broker que ativa o backend RabbitMQ.
+// BrokerRabbitMQ é o valor de AWSCredentials.Broker que ativa o backend RabbitMQ (SNS/SQS).
 const BrokerRabbitMQ = "rabbitmq"
+
+// BrokerKubernetes é o valor de AWSCredentials.Broker que ativa o backend Kubernetes (Secrets Manager).
+const BrokerKubernetes = "kubernetes"
 
 type KMSCredentials struct {
 	Aws AWSCredentials `yaml:",inline"`

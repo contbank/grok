@@ -9,6 +9,15 @@ import (
 // CreateSession ...
 func CreateSession(settings *AWSCredentials) *session.Session {
 	switch {
+	case settings.Broker == BrokerKubernetes:
+		// Não é AWS de verdade — só um "envelope" pra sinalizar pro consumidor (hoje só
+		// LoadSecretsManager) que deve ler de variável de ambiente em vez de chamar a AWS. Mesma
+		// estratégia do case BrokerRabbitMQ logo abaixo: preserva o tipo de retorno *session.Session que
+		// os consumidores já esperam, sem precisar mudar assinatura de função. Ver secrets_manager.go e
+		// /doc/grok-migracao.md.
+		return session.Must(session.NewSession(&aws.Config{
+			Endpoint: aws.String(BrokerKubernetes),
+		}))
 	case settings.Broker == BrokerRabbitMQ:
 		// RabbitMQ não é AWS — a URL do broker (ex.: amqp://usuario:senha@host:5672/) viaja no mesmo
 		// campo Endpoint já usado hoje pra apontar pro Localstack em modo fake. Essa *session.Session é
