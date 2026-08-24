@@ -190,6 +190,16 @@ func LoadCertificate(cert []byte, key []byte, passphrase string) (*tls.Certifica
 		if err != nil {
 			return nil, NewError(http.StatusInternalServerError, err.Error())
 		}
+	} else {
+		// Chave PKCS8 sem criptografia (bloco "PRIVATE KEY", não "ENCRYPTED PRIVATE KEY") — antes desta
+		// correção, derKey ficava nil neste caso (só era atribuído dentro do if acima), e
+		// x509.ParsePKCS8PrivateKey(nil) falhava sempre com "asn1: syntax error: sequence truncated".
+		// Nunca apareceu em produção porque os certificados reais (Bankly/Celcoin) são distribuídos
+		// criptografados com passphrase, mas quebra qualquer chave PKCS8 gerada sem criptografia — caso
+		// real: certificado autoassinado temporário gerado por
+		// rocket/infra/gerar-mtls-temporario-local.sh, usado para destravar o boot do accounts fora da
+		// AWS Secrets Manager.
+		derKey = block.Bytes
 	}
 
 	privKey, err := x509.ParsePKCS8PrivateKey(derKey)
