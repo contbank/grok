@@ -1,56 +1,118 @@
 version: 2.1
 
+# SSH: grok clona por git@github.com. A checkout key padrão do projeto está
+# recusada pelo GitHub. O clone usa a Additional SSH Key abaixo (igual payments).
+#
+# Para gerar uma fingerprint nova (SHA256:..., formato atual do CircleCI):
+# 1. CircleCI → grok → Project Settings → SSH Keys → Add SSH Key
+#    Hostname: github.com
+# 2. Copie a pública e adicione em GitHub → contbank/grok → Settings → Deploy keys
+#    (Allow write access, para o job de tag)
+# 3. Troque o valor de ssh_fingerprint neste arquivo pelo SHA256 que o CircleCI mostrar
+# 4. Pode apagar a checkout key antiga em SSH Keys se ela estiver inválida
+
 defaults: &defaults
-  working_directory: /go/src/github.com/contbank/grok
+  working_directory: ~/project
+  environment:
+    APP_NAME: grok
+
+ssh_fingerprint: &ssh_fingerprint
+  - "4e:da:a0:a1:fe:2e:e3:dd:89:5a:af:d2:f9:a5:2c:0d"
 
 commands:
   autotag:
     steps:
-      - run: |
-          make install-autotag
+      - run:
+          name: Get autotag
+          command: |
+            sudo apt-get update --fix-missing \
+            && sudo apt-get install wget git -y \
+            && wget -O autotag https://github.com/pantheon-systems/autotag/releases/download/1.1.1/Linux \
+            && chmod +x autotag \
+            && sudo mv autotag /usr/local/bin/
 
 jobs:
   run-tests:
     <<: *defaults
     docker:
-      - image: circleci/golang:1.17
-        environment:
-          AWS_ACCESS_KEY_ID: teste
-          AWS_SECRET_ACCESS_KEY: teste
+      - image: cimg/go:1.24.0
+      - image: localstack/localstack:2.3.2
       - image: mongo:6.0
       - image: redis:7.0
-      - image: localstack/localstack:2.3.2
-        environment:
-          DEBUG: 0
-          SERVICES: sqs,sns,kms
+    environment:
+      - DEBUG: 0
+      - SERVICES: sqs,sns,kms
+      - AWS_ACCESS_KEY_ID: teste
+      - AWS_SECRET_ACCESS_KEY: teste
+      - CGO_ENABLED: "0"
     steps:
-      - checkout
+      - add_ssh_keys:
+          fingerprints: *ssh_fingerprint
       - run:
-          name: Waiting for localstack ...
+          name: GitHub known hosts
+          command: |
+            mkdir -p ~/.ssh
+            ssh-keyscan github.com >> ~/.ssh/known_hosts
+      - run:
+          name: Checkout
+          command: |
+            git clone git@github.com:contbank/grok.git .
+            git fetch --depth 1 origin "$CIRCLE_SHA1"
+            git checkout --force "$CIRCLE_SHA1"
+      - restore_cache:
+          keys:
+            - vendor-{{ checksum "go.sum" }}
+      - run:
+          name: Waiting for LocalStack ...
           command: |
             until nc -z localhost 4566; do
                  printf '.'
                  sleep 1
              done
+            echo "LocalStack is accepting connections on 4566"
       - run:
           name: Dependencies
           command: go mod vendor
       - run:
           name: Run Tests
-          command: go test -failfast -cover ./...
+          command: go test -failfast -timeout 2m -cover ./...
+      - save_cache:
+          key: vendor-{{ checksum "go.sum" }}
+          paths:
+            - vendor
+      - persist_to_workspace:
+          root: .
+          paths:
+            - .
   release-vesion:
     <<: *defaults
     docker:
-      - image: circleci/golang:1.17
+      - image: cimg/go:1.24.0
     steps:
       - add_ssh_keys:
-          fingerprints:
-            - 4e:da:a0:a1:fe:2e:e3:dd:89:5a:af:d2:f9:a5:2c:0d
-      - checkout
+          fingerprints: *ssh_fingerprint
+      - attach_workspace:
+          at: .
       - autotag
       - run:
+          name: Create Version
+          command: autotag > current_version || autotag 2>&1
+      - run:
+          name: Known Hosts
+          command: ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+      - run:
           name: Tag Git Version
-          command: make tag-version
+          command: |
+            VERSION=$(cat current_version)
+            if git ls-remote --tags origin "refs/tags/${VERSION}" | grep -q .; then
+              echo "Tag ${VERSION} already exists on remote, skipping push"
+            else
+              git tag "${VERSION}" && git push origin "${VERSION}"
+            fi
+      - persist_to_workspace:
+          root: .
+          paths:
+            - .
 
 workflows:
   version: 2
