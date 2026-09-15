@@ -1,15 +1,10 @@
 version: 2.1
 
-# SSH: grok clona por git@github.com. A checkout key padrão do projeto está
-# recusada pelo GitHub. O clone usa a Additional SSH Key abaixo (igual payments).
-#
-# Para gerar uma fingerprint nova (SHA256:..., formato atual do CircleCI):
-# 1. CircleCI → grok → Project Settings → SSH Keys → Add SSH Key
-#    Hostname: github.com
-# 2. Copie a pública e adicione em GitHub → contbank/grok → Settings → Deploy keys
-#    (Allow write access, para o job de tag)
-# 3. Troque o valor de ssh_fingerprint neste arquivo pelo SHA256 que o CircleCI mostrar
-# 4. Pode apagar a checkout key antiga em SSH Keys se ela estiver inválida
+# SSH: grok clona por git@github.com. Clone usa Additional SSH Key (igual payments).
+# Fingerprint atual: SHA256:hCo1yHQFxjlOt16UfxDnzI5brvw6jzOLn3tTTYh22Pk
+# Private key local: C:\Users\wende\.ssh\contbank-circleci-deploy\circleci_grok
+# GitHub deploy key: circleci-grok-deploy (write)
+# CircleCI: Project Settings → SSH Keys → Add SSH Key (hostname github.com) → colar a privada
 
 defaults: &defaults
   working_directory: ~/project
@@ -17,7 +12,7 @@ defaults: &defaults
     APP_NAME: grok
 
 ssh_fingerprint: &ssh_fingerprint
-  - "4e:da:a0:a1:fe:2e:e3:dd:89:5a:af:d2:f9:a5:2c:0d"
+  - "SHA256:hCo1yHQFxjlOt16UfxDnzI5brvw6jzOLn3tTTYh22Pk"
 
 commands:
   autotag:
