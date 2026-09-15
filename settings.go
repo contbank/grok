@@ -28,6 +28,7 @@ type APISettings struct {
 	BaasProvider               *BaasProviderSettings       `yaml:"baas_provider"`
 	BaasProviderIntra          *BaasProviderIntraSettings  `yaml:"baas_provider_intra"`
 	TransactionalTokenSettings *TransactionalTokenSettings `yaml:"internal_transactional_token"`
+	TrustedDeviceSettings      *TrustedDeviceSettings      `yaml:"internal_trusted_device"`
 	MaxBodySize                int64                       `yaml:"max_body_size"`
 }
 
