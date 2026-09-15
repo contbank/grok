@@ -1,7 +1,7 @@
 version: 2.1
 
 defaults: &defaults
-  working_directory: /go/src/github.com/contbank/grok
+  working_directory: ~/project
   environment:
     APP_NAME: grok
 commands:
@@ -20,7 +20,7 @@ jobs:
   run-tests:
     <<: *defaults
     docker:
-      - image: golang:1.24-alpine
+      - image: cimg/go:1.24.0
       - image: localstack/localstack:2.3.2
       - image: mongo:6.0
       - image: redis:7.0
@@ -32,9 +32,6 @@ jobs:
       - CGO_ENABLED: "0"
     steps:
       - checkout
-      - run:
-          name: Install deps (Alpine)
-          command: apk add --no-cache git ca-certificates netcat-openbsd
       - restore_cache:
           keys:
             - vendor-{{ checksum "go.sum" }}
