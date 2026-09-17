@@ -81,6 +81,8 @@ func TokenScopesRequired(scopes []string) gin.HandlerFunc {
 type InternalAuthorize interface {
 	PermissionRequired(scope string) gin.HandlerFunc
 	PermissionsRequired(scopes []string) gin.HandlerFunc
+	// Authorize is the legacy name kept for services still on grok v0.0.88-style calls.
+	Authorize(scope string) gin.HandlerFunc
 }
 
 type APIAuthorize struct {
@@ -104,6 +106,11 @@ func NewInternalAuthorize(settings *InternalAuth) InternalAuthorize {
 	return &APIAuthorize{
 		settings: settings,
 	}
+}
+
+// Authorize is kept for callers that still use the grok v0.0.88 method name.
+func (a *APIAuthorize) Authorize(scope string) gin.HandlerFunc {
+	return a.PermissionRequired(scope)
 }
 
 // PermissionRequired ...

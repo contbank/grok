@@ -24,10 +24,13 @@ func NewMessageBrokerProducer(s *session.Session) *MessageBrokerProducer {
 	return &MessageBrokerProducer{snsSvc: snsSvc}
 }
 
-// Publish ...
-func (p *MessageBrokerProducer) Publish(topicID string, data interface{}, attributes map[string]string) (string, error) {
-	messageId, err := p.PublishWithAttributes(topicID, data, attributes)
-	return messageId, err
+// Publish envia a mensagem. attributes é opcional (compatível com 2 ou 3 argumentos).
+func (p *MessageBrokerProducer) Publish(topicID string, data interface{}, attributes ...map[string]string) (string, error) {
+	var attrs map[string]string
+	if len(attributes) > 0 {
+		attrs = attributes[0]
+	}
+	return p.PublishWithAttributes(topicID, data, attrs)
 }
 
 // PublishMany ...
