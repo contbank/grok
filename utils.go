@@ -338,18 +338,18 @@ func ZipCode(value string) string {
 	return aux
 }
 
-// FormatCurrencyToString returns BRL format 99,99
-func FormatCurrencyToString(amount float64, hasCurrencySymbol bool) string {
-	lang := message.NewPrinter(language.BrazilianPortuguese)
-	var result string
-
-	if hasCurrencySymbol {
-		result = lang.Sprintf("R$ %.2f", amount)
-	} else {
-		result = lang.Sprintf("%.2f", amount)
+// FormatCurrencyToString returns BRL format 99,99.
+// hasCurrencySymbol is optional; omitted defaults to true (prefixo R$).
+func FormatCurrencyToString(amount float64, hasCurrencySymbol ...bool) string {
+	withSymbol := true
+	if len(hasCurrencySymbol) > 0 {
+		withSymbol = hasCurrencySymbol[0]
 	}
-
-	return result
+	lang := message.NewPrinter(language.BrazilianPortuguese)
+	if withSymbol {
+		return lang.Sprintf("R$ %.2f", amount)
+	}
+	return lang.Sprintf("%.2f", amount)
 }
 
 // IsValidDatetime ...

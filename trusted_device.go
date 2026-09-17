@@ -33,6 +33,16 @@ type InternalTrustedDevice struct {
 	settings *TrustedDeviceSettings
 }
 
+type trustedDeviceVerifyPayload struct {
+	UserID      string `json:"user_id"`
+	DeviceID    string `json:"device_id"`
+	Nonce       string `json:"nonce"`
+	Signature   string `json:"signature"`
+	Method      string `json:"method"`
+	Path        string `json:"path"`
+	PayloadHash string `json:"payload_hash"`
+}
+
 func CreateTrustedDevice(settings *TrustedDeviceSettings) TrustedDevice {
 	if settings == nil || settings.Fake {
 		success := true
@@ -57,10 +67,16 @@ func (a *InternalTrustedDevice) Validate() gin.HandlerFunc {
 			Messages: []string{"aparelho não cadastrado ou sem permissão"},
 		}
 
+		if a.settings == nil || strings.TrimSpace(a.settings.URL) == "" {
+			c.AbortWithStatusJSON(http.StatusForbidden, defaultError)
+			return
+		}
+
+		userID := strings.TrimSpace(c.GetString("user_id"))
 		deviceID := strings.TrimSpace(c.GetHeader(DeviceIDHeader))
 		nonce := strings.TrimSpace(c.GetHeader(DeviceNonceHeader))
 		signature := strings.TrimSpace(c.GetHeader(DeviceSignatureHeader))
-		if deviceID == "" || nonce == "" || signature == "" {
+		if userID == "" || deviceID == "" || nonce == "" || signature == "" {
 			c.AbortWithStatusJSON(http.StatusForbidden, defaultError)
 			return
 		}
@@ -73,14 +89,8 @@ func (a *InternalTrustedDevice) Validate() gin.HandlerFunc {
 		c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 
 		sum := sha256.Sum256(bodyBytes)
-		payload := struct {
-			DeviceID    string `json:"device_id"`
-			Nonce       string `json:"nonce"`
-			Signature   string `json:"signature"`
-			Method      string `json:"method"`
-			Path        string `json:"path"`
-			PayloadHash string `json:"payload_hash"`
-		}{
+		payload := trustedDeviceVerifyPayload{
+			UserID:      userID,
 			DeviceID:    deviceID,
 			Nonce:       nonce,
 			Signature:   signature,
@@ -107,7 +117,8 @@ func (a *InternalTrustedDevice) Validate() gin.HandlerFunc {
 			req.Header.Set(CurrentIdentityHeader, identity)
 		}
 
-		resp, err := http.DefaultClient.Do(req)
+		client := http.Client{}
+		resp, err := client.Do(req)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusForbidden, defaultError)
 			return
