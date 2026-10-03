@@ -49,7 +49,7 @@ func LogMiddleware(restricteds []string) gin.HandlerFunc {
 		fields := make(map[string]interface{})
 
 		fields["request"] = req
-		fields["claims"] = c.Keys
+		fields["claims"] = restrictedClaims(c.Keys)
 		fields["errors"] = c.Errors
 		fields["ip"] = c.ClientIP()
 		fields["latency"] = elapsed.Seconds()
@@ -128,6 +128,18 @@ func restricted(v interface{}, restricteds []string) interface{} {
 		str, _ = sjson.Set(str, restricted, "RESTRICTED")
 	}
 	return unmarshal(str)
+}
+
+// restrictedClaims copia as claims sem o access_token (o header Authorization gravado por SetAccessTokenInContext).
+func restrictedClaims(keys map[string]interface{}) map[string]interface{} {
+	claims := make(map[string]interface{}, len(keys))
+	for k, v := range keys {
+		claims[k] = v
+	}
+	if _, ok := claims["access_token"]; ok {
+		claims["access_token"] = "RESTRICTED"
+	}
+	return claims
 }
 
 func marshal(v interface{}) string {
