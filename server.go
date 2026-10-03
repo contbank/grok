@@ -94,6 +94,7 @@ func WithGRPC(grpcServer *grpc.Server) APIOption {
 
 var defaultRestricteds = []string{
 	TransactionTokenHeader,
+	"Authorization",
 }
 
 // New creates a new API server
