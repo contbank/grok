@@ -34,6 +34,11 @@ jobs:
       - image: localstack/localstack:2.3.2
       - image: mongo:6.0
       - image: redis:7.0
+      # Redis com senha na 6380 (redis_test: TestConnectWithURLAndAuth / WrongAuth)
+      - image: redis:7.0
+        command: ["redis-server", "--port", "6380", "--requirepass", "testpass123"]
+      # RabbitMQ do backend broker: rabbitmq (producer_test / subscriber_test), guest:guest na 5672
+      - image: rabbitmq:3.13
     environment:
       - DEBUG: 0
       - SERVICES: sqs,sns,kms
@@ -65,6 +70,18 @@ jobs:
                  sleep 1
              done
             echo "LocalStack is accepting connections on 4566"
+      - run:
+          name: Waiting for RabbitMQ and Redis with auth ...
+          command: |
+            until nc -z localhost 5672; do
+                 printf '.'
+                 sleep 1
+             done
+            until nc -z localhost 6380; do
+                 printf '.'
+                 sleep 1
+             done
+            echo "RabbitMQ on 5672 and Redis with auth on 6380 are accepting connections"
       - run:
           name: Dependencies
           command: go mod vendor
