@@ -121,6 +121,12 @@ func (a *IntraAuthentication) login(ctx context.Context, model IntraAuthenticati
 		//return nil, FindError("400", bodyErr.Message)
 	}
 
+	respBody, _ := ioutil.ReadAll(resp.Body)
+	logrus.WithFields(logrus.Fields{
+		"status_code":   resp.StatusCode,
+		"response_body": string(respBody),
+	}).Error("intra authentication: erro não mapeado do provedor (retornando erro genérico pro caller)")
+
 	return nil, ErrDefaultLogin
 }
 

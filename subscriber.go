@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/aws/aws-sdk-go/service/sqs"
+	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/sirupsen/logrus"
 )
 
@@ -25,6 +26,10 @@ type MessageBrokerSubscriber struct {
 	maxRetries   int
 	fifo         bool
 	dlq          bool
+
+	// Presentes só quando WithSessionSQS/WithSessionSNS detecta sessão em modo RabbitMQ (ver rabbitmq.go).
+	amqpConn    *amqp.Connection
+	amqpChannel *amqp.Channel
 }
 
 // MessageBrokerSubscriberOption ...
@@ -48,6 +53,12 @@ func NewMessageBrokerSubscriber(opts ...MessageBrokerSubscriberOption) *MessageB
 // WithSessionSQS ...
 func WithSessionSQS(sessionSQS *session.Session) MessageBrokerSubscriberOption {
 	return func(s *MessageBrokerSubscriber) {
+		if endpoint, ok := isAMQPEndpoint(sessionSQS); ok {
+			if s.amqpChannel == nil {
+				s.amqpConn, s.amqpChannel = amqpDial(endpoint)
+			}
+			return
+		}
 		s.sqsSvc = sqs.New(sessionSQS)
 	}
 }
@@ -55,6 +66,12 @@ func WithSessionSQS(sessionSQS *session.Session) MessageBrokerSubscriberOption {
 // WithSessionSNS ...
 func WithSessionSNS(sessionSNS *session.Session) MessageBrokerSubscriberOption {
 	return func(s *MessageBrokerSubscriber) {
+		if endpoint, ok := isAMQPEndpoint(sessionSNS); ok {
+			if s.amqpChannel == nil {
+				s.amqpConn, s.amqpChannel = amqpDial(endpoint)
+			}
+			return
+		}
 		s.snsSvc = sns.New(sessionSNS)
 	}
 }
@@ -119,6 +136,10 @@ func WithFIFOAttributes(messageGroupID *string, messageDeduplicationID *string) 
 
 // Run ...
 func (s *MessageBrokerSubscriber) Run() error {
+
+	if s.amqpChannel != nil {
+		return s.runAMQP()
+	}
 
 	var queueURL *string
 

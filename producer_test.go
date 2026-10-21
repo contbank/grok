@@ -34,6 +34,24 @@ func (s *ProducerTestSuite) TestPublish() {
 	s.assert.NotNil(messageId)
 }
 
+// TestPublishAMQP valida o backend RabbitMQ novo do MessageBrokerProducer (ver rabbitmq.go) — mesma
+// função pública Publish, só troca o backend via AWSCredentials.Broker = grok.BrokerRabbitMQ. Requer um
+// RabbitMQ local em amqp://guest:guest@localhost:5672/ (parte da migração AWS→Hetzner, ver
+// /doc/grok-migracao.md §2.1).
+func (s *ProducerTestSuite) TestPublishAMQP() {
+	session := grok.CreateSession(&grok.AWSCredentials{
+		Broker:   grok.BrokerRabbitMQ,
+		Endpoint: "amqp://guest:guest@localhost:5672/",
+		Region:   "us-west-2",
+	})
+	producer := grok.NewMessageBrokerProducer(session)
+
+	messageId, err := producer.Publish("test-topic-amqp", map[string]interface{}{"ping": "pong"}, nil)
+
+	s.assert.NoError(err)
+	s.assert.NotNil(messageId)
+}
+
 func (s *ProducerTestSuite) TestPublishFIFO() {
 	session := grok.FakeSession(s.settings.AWS.SNS.Endpoint, s.settings.AWS.SNS.Region)
 	producer := grok.NewMessageBrokerProducer(session)
