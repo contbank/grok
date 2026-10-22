@@ -44,16 +44,34 @@ const (
 
 // PushNotificationRequested: one notice. NotificationID is the idempotency key (same id = one notice): build it
 // from the fact (e.g. "payment_approved:<payment id>"), never from a key value, name or document. Params carries
-// counts for templates whose text has numbers (e.g. the daily summary).
+// counts for templates whose text has numbers (e.g. the daily summary) and amounts in cents (PushParamAmountCents).
+// Details carries texts (PushDetail* keys) for the complete text of the notice (comunicacao 04-push-com-detalhes):
+// notifications keeps Params amounts and Details only in the notification center, which the app fetches by
+// notification_id; they never go to Expo.
 type PushNotificationRequested struct {
-	NotificationID string         `json:"notification_id"`
-	Template       PushTemplate   `json:"template"`
-	Params         map[string]int `json:"params,omitempty"`
-	Recipients     PushRecipients `json:"recipients"`
+	NotificationID string            `json:"notification_id"`
+	Template       PushTemplate      `json:"template"`
+	Params         map[string]int    `json:"params,omitempty"`
+	Details        map[string]string `json:"details,omitempty"`
+	Recipients     PushRecipients    `json:"recipients"`
 	// Route: app screen opened on tap ("/pagar/<id>"); empty uses the template route.
 	Route  string `json:"route,omitempty"`
 	Source string `json:"source,omitempty"`
 }
+
+// Keys of the complete text. Amounts go in Params, in cents; dates as YYYY-MM-DD; notifications formats them.
+const (
+	PushParamAmountCents = "amount_cents"
+
+	// PushDetailCounterparty: who paid (money in) or who receives (payment): payer, beneficiary or assignor name.
+	PushDetailCounterparty = "counterparty"
+	// PushDetailDueDate: due date, YYYY-MM-DD.
+	PushDetailDueDate = "due_date"
+	// PushDetailMethod: payment method as the service stores it (BOLETO, PIX, TED, ...).
+	PushDetailMethod = "method"
+	// PushDetailAuthor: name of the user who did it (included the payment, created the batch).
+	PushDetailAuthor = "author"
+)
 
 // PushRecipients: UserIDs and the admins of Account together, minus ExcludeUserIDs.
 type PushRecipients struct {
