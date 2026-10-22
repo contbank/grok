@@ -43,6 +43,20 @@ func TestPushNotificationRequestedJSON(t *testing.T) {
 		"account_context":{"account_id":"acc","identity":"30777482000151"}}}`, string(raw))
 }
 
+// Amount in cents and texts for the complete text kept in the notification center (never on the push).
+func TestPushNotificationRequestedDetailsJSON(t *testing.T) {
+	request := &PushNotificationRequested{
+		NotificationID: "pix_received:E123",
+		Template:       PushTemplatePixReceived,
+		Params:         map[string]int{PushParamAmountCents: 20000},
+		Details:        map[string]string{PushDetailCounterparty: "CLIENTE Z"},
+	}
+	raw, err := json.Marshal(request)
+	require.NoError(t, err)
+	require.JSONEq(t, `{"notification_id":"pix_received:E123","template":"PIX_RECEIVED","params":{"amount_cents":20000},
+		"details":{"counterparty":"CLIENTE Z"},"recipients":{}}`, string(raw))
+}
+
 func TestPushAccount(t *testing.T) {
 	require.Equal(t, &PushAccountRecipient{AccountID: "acc", Identity: "30777482000151"}, PushAccount(" acc ", "30.777.482/0001-51"))
 	require.Nil(t, PushAccount("acc", ""))
