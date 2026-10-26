@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 	"testing"
 	"time"
 
@@ -367,4 +368,76 @@ func (s *MessageBrokerSubscriberTestSuite) TestDLQSubscribeAMQP() {
 		s.assert.NoError(err)
 	}()
 	<-dlqReceived
+}
+
+// requeueWithDelayScenario: a primeira entrega reagenda com RequeueWithDelay e confirma; a cópia nova tem que
+// chegar só depois do delay, com o conteúdo atualizado.
+func (s *MessageBrokerSubscriberTestSuite) requeueWithDelayScenario(session *session.Session,
+	producer *grok.MessageBrokerProducer, subscriberID, topicID string) {
+	const delay = 2 * time.Second
+
+	requeuedAt := make(chan time.Time, 1)
+	redelivered := make(chan time.Time, 1)
+
+	message := map[string]interface{}{"ping": "pong", "attempt": 1}
+
+	var messageBroker *grok.MessageBrokerSubscriber
+	messageBroker = grok.NewMessageBrokerSubscriber(
+		grok.WithSessionSQS(session),
+		grok.WithSessionSNS(session),
+		grok.WithTopicID(topicID),
+		grok.WithSubscriberID(subscriberID),
+		grok.WithMaxRetries(3),
+		grok.WithType(reflect.TypeOf(message)),
+		grok.WithDLQ(true),
+		grok.WithHandler(func(data interface{}) error {
+			value := *data.(*map[string]interface{})
+			if value["attempt"] == float64(1) {
+				value["attempt"] = 2
+				if err := messageBroker.RequeueWithDelay(value, delay); err != nil {
+					return err
+				}
+				requeuedAt <- time.Now()
+				return nil
+			}
+
+			s.assert.Equal("pong", value["ping"])
+			redelivered <- time.Now()
+			return nil
+		}),
+	)
+
+	go func() {
+		s.assert.NoError(messageBroker.Run())
+	}()
+
+	time.Sleep(time.Second * 3)
+
+	_, err := producer.Publish(topicID, message, nil)
+	s.assert.NoError(err)
+
+	var start time.Time
+	select {
+	case start = <-requeuedAt:
+	case <-time.After(30 * time.Second):
+		s.FailNow("first delivery not received")
+	}
+
+	select {
+	case end := <-redelivered:
+		s.assert.GreaterOrEqual(end.Sub(start), delay-200*time.Millisecond)
+	case <-time.After(30 * time.Second):
+		s.FailNow("requeued message not received")
+	}
+}
+
+// Nomes com sufixo por execução: a fila de uma rodada anterior não pode entregar mensagem velha nesta.
+func (s *MessageBrokerSubscriberTestSuite) TestRequeueWithDelay() {
+	suffix := strconv.FormatInt(time.Now().UnixNano(), 36)
+	s.requeueWithDelayScenario(s.sessionSQS, s.producer, "subs-requeue-delay-"+suffix, "topic-teste-requeue-delay-"+suffix)
+}
+
+func (s *MessageBrokerSubscriberTestSuite) TestRequeueWithDelayAMQP() {
+	suffix := strconv.FormatInt(time.Now().UnixNano(), 36)
+	s.requeueWithDelayScenario(s.amqpSession, s.amqpProducer, "subs-amqp-requeue-delay-"+suffix, "topic-teste-amqp-requeue-delay-"+suffix)
 }
